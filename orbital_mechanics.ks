@@ -1,5 +1,120 @@
-// Calculate required velocity at apoapsis (or periapsis) for circular orbit
+function VelocityAtR {
+	declare parameter r.
+	declare parameter semiMajorAxis.
+	declare parameter mu.
 
+	set orbitSpeed to sqrt(mu * (2/r - 1/semiMajorAxis)).
+	return orbitSpeed.
+	}
+
+function VelocityEscape {
+	declare parameter r.
+	declare parameter mu.
+	set escapeVelocity to sqrt((2 * mu)/r). // Ve = root(2GM/r)
+	return escapeVelocity.
+	}
+
+function PeriodFromSemiMajorAxis {
+	declare parameter a.
+	declare parameter mu is body:mu.
+	set period to 2 * constant:Pi * sqrt(a^3 / mu).
+	return period.
+	}
+
+function SemiMajorAxisFromPeriod {
+	declare parameter period.
+	declare parameter mu is body:mu.
+	set twoPi to 2 * constant:Pi.
+	set a to (mu * (period/twoPi)^2)^(1/3).
+	return a.
+	}
+
+function SemiMajorAxisFromRadiusSpeedMu {
+	declare parameter radius.
+	declare parameter speed.
+	declare parameter mu.
+
+	set derivedSMA to 1/(2/radius - speed^2/mu).
+	return derivedSMA.
+	}
+
+function SpeedFromSemiMajorAxisRadiusMu {
+	declare parameter sma.
+	declare parameter radius.
+	declare parameter mu.
+	
+	set derivedSpeed to sqrt(mu * (2/radius - 1/sma)).
+	return derivedSpeed.
+	}
+
+function FuelMassFromDeltaVEndMass {
+	declare parameter DeltaV.
+	declare parameter EndMass.
+	
+	}
+
+function BindAngleTo360 {
+	declare parameter angle.
+
+	until angle >= 0 {
+		set angle to angle + 360.
+		}
+
+	until angle < 360 {
+		set angle to angle - 360.
+		}
+
+	return angle.
+}
+
+function TimeString {
+	declare parameter secondsToDisplay.
+	
+	set daysValue to floor(secondsToDisplay / (3600 * 6)).
+	set afterDays to secondsToDisplay - (daysValue * 3600 * 6).
+	set hoursValue to floor(afterDays / 3600).
+	set afterHours to afterDays - (hoursValue * 3600).
+	set minutesValue to floor(afterHours / 60).
+	set seconds to floor(afterHours - (minutesValue * 60)).
+	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
+	}
+
+function TimeToNearestNode {
+	declare parameter myOrbit is Orbit.
+
+	set celestialLongitude to LongitudeFromOrbit(myOrbit).
+	set lan to myOrbit:LongitudeOfAscendingNode.
+	if lan > 180 {
+		set ldn to lan - 180.
+		}
+	else {
+		set ldn to lan + 180.
+		}
+	}
+
+function TimeToHighestNode {
+	declare parameter myOrbit is Orbit.
+
+	set celestialLongitude to LongitudeFromOrbit(myOrbit).
+	if myOrbit:ArgumentOfPeriapsis > 90 and myOrbit:ArgumentOfPeriapsis < 270 {
+		set longitudeOfNode to myOrbit:LongitudeOfAscendingNode.
+		}
+	else if myOrbit:LongitudeOfAscendingNode >= 180 {
+		set longitudeOfNode to myOrbit:LongitudeOfAscendingNode - 180.
+		}
+	else {
+		set longitudeOfNode to myOrbit:LongitudeOfAscendingNode + 180.
+		}
+	if longitudeOfNode < celestialLongitude {
+		set longitudeOfNode to longitudeOfNode + 360.
+		}
+	set angleToNode to longitudeOfNode - celestialLongitude.
+	set secondsPerDegree to myOrbit:Period / 360.
+	set timeToNode to angleToNode * secondsPerDegree.
+	return timeToNode.
+	}
+
+// Calculate required velocity at apoapsis (or periapsis) for circular orbit
 function create_circularise_node {
 	declare parameter isApoapsis is true.
 
@@ -20,7 +135,6 @@ function create_circularise_node {
 	set orbit_speed to sqrt(body:mu * (2/r - 1/semi_major)).
 
 	// Create manoeuvre node at apoapsis
-
 	set dR to 0.
 	set dN to 0.
 	set dP to required_velocity_magnitude - orbit_speed.
@@ -35,37 +149,163 @@ function create_circularise_node {
 	add circularisation.
 }
 
-function SemiMajorFromPeriod {
-	declare parameter period.
-	declare parameter centreBody is body.
+function AlterApoapsis {
+	parameter newApoapsis.
+	parameter myOrbit is Orbit.
+	parameter timeOfInterest is time:seconds.
+	parameter maximumBurnTime is 0.
+
+	set oldPeriapsisRadius to Orbit:Periapsis + Orbit:Body:Radius.
+	set oldSemiMajorAxis to Orbit:SemiMajorAxis.
+	set oldOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, oldSemiMajorAxis, Orbit:Body:Mu).
+
+	set newSemiMajorAxis to (Orbit:Periapsis + newApoapsis)/2 + Orbit:Body:Radius.
+	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, Orbit:Body:Mu).
+
+	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
+	if myOrbit = Orbit {
+		set timeToPeriapsis to ETA:Periapsis.
+		}
+	else {
+		set angleToPeriapsis to 360 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
+		if angleToPeriapsis < 0 {
+			set angleToPeriapsis to angleToPeriapsis + 360.
+			}
+		set timeToPeriapsis to angleToPeriapsis * (myOrbit:Period / 360).
+		}
+	set nodeTime to timeToPeriapsis + timeOfInterest.
+	set newNode to node(nodeTime, 0, 0, deltaV).
+	add newNode.
+	return newNode.
+	}
+
+function AlterPeriapsis {
+	parameter newPeriapsis.
+	parameter myOrbit is Orbit.
+	parameter timeOfInterest is time:seconds.
+
+	set oldApoapsisRadius to myOrbit:Apoapsis + myOrbit:Body:Radius.
+	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
+	set oldOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, oldSemiMajorAxis, myOrbit:Body:Mu).
+
+	set newSemiMajorAxis to (myOrbit:Apoapsis + newPeriapsis)/2 + myOrbit:Body:Radius.
+	set newOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
+
+	set deltaV to newOrbitSpeedAtApoapsis - oldOrbitSpeedAtApoapsis.
+	set angleToApoapsis to 180 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
+	if angleToApoapsis < 0 {
+		set angleToApoapsis to angleToApoapsis + 360.
+		}
+	set timeToApoapsis to angleToApoapsis * (myOrbit:Period / 360).
+	set nodeTime to timeToApoapsis + timeOfInterest.
+	set newNode to node(nodeTime, 0, 0, deltaV).
+	add newNode.
+	return newNode.
+	}
+
+function AlterSMA {
+	parameter newA.
+	parameter oldOrbit is Orbit.
+	parameter timeOfInterest is time:seconds.
 	
-	set semiMajorAxis to ((period^2 * centreBody:mu) / (4 * constant:pi^2))^(1/3).
-	return semiMajorAxis.
+	print "Old SMA: " + oldOrbit:SemiMajorAxis.
+	print "New SMA: " + newA.
+
+	if newA < oldOrbit:SemiMajorAxis {
+		// Lower the apoapsis
+		set newApoapsis to 2 * newA - oldOrbit:periapsis - (2 * oldOrbit:body:radius).
+		print "New Ap: " + newApoapsis.
+		set newNode to AlterApoapsis(newApoapsis, oldOrbit, timeOfInterest).
+		}
+	else {
+		// Raise the periapsis
+		set newPeriapsis to 2 * newA - oldOrbit:apoapsis - (2 * oldOrbit:body:radius).
+		print "New Pe: " + newPeriapsis.
+		set newNode to AlterPeriapsis(newPeriapsis, oldOrbit, timeOfInterest).
+		}
+	return newNode.
+	}
+
+function AlterInclination {
+	parameter newInclination.
+	parameter atHighestNode is true.
+	}
+
+function LongitudeFromOrbit {
+	parameter orbitOfInterest.
+	
+	set lan to orbitOfInterest:lan.
+	set argumentofPeriapsis to orbitOfInterest:ArgumentOfPeriapsis.
+	set meanAnomaly to MeanAnomalyFromOrbit(orbitOfInterest).
+	
+	set theLongitude to LongitudeFromMeanAnomaly(lan, argumentOfPeriapsis, meanAnomaly).
+	return theLongitude.
 	}
 
 function EccentricAnomalyFromMeanAnomaly {
 	declare parameter meanAnomaly.
 	declare parameter eccentricity.
 	
-	set eccentricAnomaly to meanAnomaly + eccentricity * sin(meanAnomaly).
+	set eccentricAnomaly to 180.
 	lock checkM to eccentricAnomaly - eccentricity * sin(eccentricAnomaly).
 	lock deltaE to
 		(eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly)
 		/
 		(1 - eccentricity * cos(eccentricAnomaly)).
-	until deltaE < 0.000005 {
+	until abs(deltaE) < 0.000005 {
 		set eccentricAnomaly to eccentricAnomaly - deltaE.
 		}
 	return eccentricAnomaly.
 	}
 
+function EccentricAnomalyFromTrueAnomaly {
+	declare parameter trueAnomaly.
+	declare parameter eccentricity.
+
+	set cosArgument to eccentricity + cos(trueAnomaly).
+	set sinArgument to sqrt(1 - eccentricity^2) * sin(trueAnomaly).
+	set fromTan to ArcTan2(sinArgument, cosArgument).
+	if sinArgument < 0 {
+		set fromTan to fromTan + 360.
+		}
+	return fromTan.
+	}
+
+function LongitudeFromMeanAnomaly {
+	declare parameter lan.
+	declare parameter argumentOfPeriapsis.
+	declare parameter meanAnomaly.
+	
+	set rawLongitude to lan + argumentOfPeriapsis + meanAnomaly.
+	set theLongitude to rawLongitude - (floor(rawLongitude / 360) * 360).
+	if theLongitude > 180 {
+		set theLongitude to theLongitude - 360.
+		}
+	return theLongitude.
+	}
+
 function MeanAnomalyFromOrbit {
-	declare parameter orbitOfInterest.
+	parameter orbitOfInterest.
+	parameter timeOfInterest is time:seconds.
 	set orbitPeriod to orbitOfInterest:period.
-	set secondsSinceEpoch to time:seconds - orbitOfInterest:epoch.
+	set secondsSinceEpoch to timeOfInterest - orbitOfInterest:epoch.
 	set totalOrbits to secondsSinceEpoch / orbitPeriod.
 	set orbitFraction to totalOrbits - floor(totalOrbits).
 	return orbitFraction * 360 + orbitOfInterest:meanAnomalyAtEpoch.
+	}
+
+function MeanAnomalyFromPeriodEpochAngleTime {
+	parameter period.
+	parameter epoch is 0.
+	parameter meanAnomalyAtEpoch is 0.
+	parameter timeOfInterest is time:seconds.
+
+	set secondsSinceEpoch to timeOfInterest - epoch.
+	set totalOrbits to secondsSinceEpoch / period.
+	set orbitFraction to totalOrbits - floor(totalOrbits).
+	set meanAnomaly to orbitFraction * 360 + meanAnomalyAtEpoch.
+	if meanAnomaly > 360 { set meanAnomaly to meanAnomaly - 360. }
+	return meanAnomaly.
 	}
 
 function MeanAnomalyFromEccentricAnomaly {
@@ -80,28 +320,11 @@ function TrueAnomalyFromEccentricAnomaly {
 	declare parameter eccentricAnomaly.
 	declare parameter eccentricity.
 
-	set x to sqrt(1 - eccentricity) * cos(eccentricAnomaly / 2).
-	set y to sqrt(1 + eccentricity) * sin(eccentricAnomaly / 2).
-	set theta to 2 * atan2(y, x).
-	}
-
-function EccentricAnomalyFromTrueAnomaly {
-	declare parameter trueAnomaly.
-	declare parameter eccentricity.
-
-	set cosArgument to (eccentricity + cos(trueAnomaly)) / (1 + eccentricity * cos(trueAnomaly)).
-	set sinArgument to (sqrt(1 - eccentricity^2) * sin(trueAnomaly)) / (1 + eccentricity * cos(trueAnomaly)).
-	set fromCos to ArcCos(cosArgument).
-	print "From Cosine: " + round(fromCos, 3).
-	set fromSin to ArcSin(sinArgument).
-	print "From Sine:   " + round(fromSin, 3).
-	print "Other Sine:  " + round((180 - fromSin), 3).
-	set fromTan to ArcTan(sinArgument / cosArgument).
-	print "From Tan:    " + round(fromTan, 3).
-	set otherTan to ArcTan2(-sinArgument, cosArgument).
-	print "Other Tan:   " + round(otherTan, 3).
-	if trueAnomaly > 180 {
-		set otherTan to 360 - otherTan.
+	set cosArgument to sqrt(1 - eccentricity) * cos(eccentricAnomaly / 2).
+	set sinArgument to sqrt(1 + eccentricity) * sin(eccentricAnomaly / 2).
+	set theta to 2 * arctan2(sinArgument, cosArgument).
+	if sinArgument < 0 {
+		set theta to theta + 360.
 		}
-	return otherTan.
+	return theta.
 	}
