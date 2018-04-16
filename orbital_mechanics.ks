@@ -229,6 +229,18 @@ function AlterSMA {
 function AlterInclination {
 	parameter newInclination.
 	parameter atHighestNode is true.
+
+	set taan to TrueAnomalyOfAscendingNode().
+	set tadn to TrueAnomalyOfDescendingNode().
+	set ttdn to TimeToDescendingNode().
+	set ttan to TimeToAscendingNode().
+	set vx to VelocityAt(ship, time:seconds + ttdn):orbit:mag.
+	set dTheta to -(newInclination - orbit:inclination)/2.
+	set dv to sqrt(2 * (vx^2) * (1 - cos(dTheta))).
+	set Vn to cos(dTheta) * dv.
+	set Vp to -sin(dTheta) * dv.
+	set node to node(time:seconds + ttdn, 0, Vn, Vp).
+	add node.
 	}
 
 function LongitudeFromOrbit {
@@ -240,6 +252,60 @@ function LongitudeFromOrbit {
 	
 	set theLongitude to LongitudeFromMeanAnomaly(lan, argumentOfPeriapsis, meanAnomaly).
 	return theLongitude.
+	}
+
+function TrueAnomalyOfAscendingNode {
+	declare parameter myOrbit is orbit.
+
+	set taan to (360 - myOrbit:ArgumentOfPeriapsis).
+	return taan.
+	}
+
+function MeanAnomalyOfAscendingNode {
+	declare parameter myOrbit is orbit.
+	
+	set taan to TrueAnomalyOfAscendingNode(myOrbit).
+	set eaan to EccentricAnomalyFromTrueAnomaly(taan, orbit:eccentricity).
+	set maan to MeanAnomalyFromEccentricAnomaly(eaan, orbit:eccentricity).
+	return maan.
+	}
+
+function TimeToAscendingNode {
+	declare parameter myOrbit is orbit.
+	set secondsPerDegree to orbit:Period / 360.
+
+	set mean to MeanAnomalyFromOrbit(myOrbit).
+	set maan to MeanAnomalyOfAscendingNode(myOrbit).
+	set angle to BindAngleTo360(maan - mean).
+	set secondsToAN to angle * secondsPerDegree.
+	return secondsToAn.
+	}
+
+function TrueAnomalyOfDescendingNode {
+	declare parameter myOrbit is orbit.
+
+	set tadn to BindAngleTo360(180 - myOrbit:ArgumentOfPeriapsis).
+	return tadn.
+	}
+
+function MeanAnomalyOfDescendingNode {
+	declare parameter myOrbit is orbit.
+
+	set tadn to TrueAnomalyOfDescendingNode(myOrbit).
+	set eadn to EccentricAnomalyFromTrueAnomaly(tadn, orbit:eccentricity).
+	set madn to MeanAnomalyFromEccentricAnomaly(eadn, orbit:eccentricity).
+	return madn.
+	}
+
+function TimeToDescendingNode {
+	declare parameter myOrbit is orbit.
+	set secondsPerDegree to orbit:Period / 360.
+
+	set mean to MeanAnomalyFromOrbit(myOrbit).
+	set madn to MeanAnomalyOfDescendingNode(myOrbit).
+	set angle to BindAngleTo360(madn - mean).
+	set secondsToDN to angle * secondsPerDegree.
+	return secondsToDN.
 	}
 
 function EccentricAnomalyFromMeanAnomaly {
