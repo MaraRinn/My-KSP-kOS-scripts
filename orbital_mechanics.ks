@@ -249,7 +249,7 @@ function EccentricAnomalyFromMeanAnomaly {
 	set eccentricAnomaly to 180.
 	lock checkM to eccentricAnomaly - eccentricity * sin(eccentricAnomaly).
 	lock deltaE to
-		(eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly)
+		(eccentricAnomaly - eccentricity * sin(eccentricAnomaly) * Constant:RadToDeg - meanAnomaly)
 		/
 		(1 - eccentricity * cos(eccentricAnomaly)).
 	until abs(deltaE) < 0.000005 {
@@ -312,7 +312,7 @@ function MeanAnomalyFromEccentricAnomaly {
 	declare parameter eccentricAnomaly.
 	declare parameter eccentricity.
 
-	set meanAnomaly to eccentricAnomaly - eccentricity * sin(eccentricAnomaly).
+	set meanAnomaly to eccentricAnomaly - eccentricity * sin(eccentricAnomaly) * constant:RadToDeg.
 	return meanAnomaly.
 	}
 
