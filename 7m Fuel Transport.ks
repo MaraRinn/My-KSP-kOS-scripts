@@ -74,6 +74,9 @@ if BODY = Kerbin {
 			// raise periapsis to parking orbit
 			}
 		}
+	else {
+		print " - Plan transfer to Minmus".
+		}
 	}
 else if BODY = Minmus {
 	print " - Orbiting Minmus".
@@ -101,7 +104,12 @@ else if BODY = Minmus {
 			set Target to "Minmus Fuel Depot".
 			}
 		}
-	else { print " - gotta get back to kerbin". }
+	else {
+		print " - gotta get back to kerbin".
+		set ttan to TimeToAscendingNode(body:orbit).
+		set ttdn to TimeToDescendingNode(body:orbit).
+		print "  - wait " + TimeString(ttan) + " for AN or " + TimeString(ttdn) + " for DN".
+		}
 	
 	// Fuel tanks full?
 	// Transfer burn to return to Kerbin

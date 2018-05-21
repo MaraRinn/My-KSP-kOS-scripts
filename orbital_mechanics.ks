@@ -228,18 +228,48 @@ function AlterSMA {
 
 function AlterInclination {
 	parameter newInclination.
-	parameter atHighestNode is true.
+	parameter atHighestNode is true. // highest ¬nearest
 
 	set taan to TrueAnomalyOfAscendingNode().
 	set tadn to TrueAnomalyOfDescendingNode().
 	set ttdn to TimeToDescendingNode().
 	set ttan to TimeToAscendingNode().
-	set vx to VelocityAt(ship, time:seconds + ttdn):orbit:mag.
-	set dTheta to -(newInclination - orbit:inclination)/2.
-	set dv to sqrt(2 * (vx^2) * (1 - cos(dTheta))).
+	set nodeEta to 0.
+
+	if not atHighestNode {
+		// Use closest node
+		if ttdn < ttan {
+			print " - DN is closer".
+			set timeToNode to ttdn.
+			set newInclination to -newInclination.
+			}
+		else {
+			print " - AN is closer".
+			set timeToNode to ttan.
+			}
+		}
+	else {
+		// Use highest node
+		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
+			print " - DN is higher".
+			set timeToNode to ttdn.
+			set newInclination to -newInclination.
+			}
+		else {
+			print " - AN is higher".
+			set timeToNode to ttan.
+			}
+		}
+
+	set vx to VelocityAt(ship, time:seconds + timeToNode):orbit:mag.
+	print " - vx = " + vx.
+	set dTheta to (newInclination - orbit:inclination).
+	//set dv to sqrt(2 * vx^2 * (1 - cos(dTheta))).
+	set dv to vx * sin(dTheta/2).
+	print " - dv = " + dv.
 	set Vn to cos(dTheta) * dv.
-	set Vp to -sin(dTheta) * dv.
-	set node to node(time:seconds + ttdn, 0, Vn, Vp).
+	set Vp to -abs(sin(dTheta) * dv).
+	set node to node(time:seconds + timeToNode, 0, Vn, Vp).
 	add node.
 	}
 
@@ -272,7 +302,7 @@ function MeanAnomalyOfAscendingNode {
 
 function TimeToAscendingNode {
 	declare parameter myOrbit is orbit.
-	set secondsPerDegree to orbit:Period / 360.
+	set secondsPerDegree to myOrbit:Period / 360.
 
 	set mean to MeanAnomalyFromOrbit(myOrbit).
 	set maan to MeanAnomalyOfAscendingNode(myOrbit).
@@ -299,7 +329,7 @@ function MeanAnomalyOfDescendingNode {
 
 function TimeToDescendingNode {
 	declare parameter myOrbit is orbit.
-	set secondsPerDegree to orbit:Period / 360.
+	set secondsPerDegree to myOrbit:Period / 360.
 
 	set mean to MeanAnomalyFromOrbit(myOrbit).
 	set madn to MeanAnomalyOfDescendingNode(myOrbit).

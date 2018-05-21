@@ -3,8 +3,6 @@ print "MINING OPERATION" at (0,0).
 print "================" at (0,1).
 
 set fuelFull to false.
-set sunArrow to vecDraw(V(0,0,0), sun:position:normalized * 40, RGB(1,1,0), "Kerbol", 1, true, 0.2).
-set sunArrow:vecupdater to { return sun:position:normalized * 40. }.
 deploydrills on.
 panels on.
 radiators on.
@@ -25,8 +23,8 @@ FOR RES IN RESLIST {
 	}
 
 ON AG2 {
-	preserve.
 	set fuelFull to true.
+	fuelcells off.
 	}
 
 until fuelFull {
@@ -40,24 +38,22 @@ until fuelFull {
 
 	set fuelPercent to round(100*fuel:amount/fuel:capacity).
 	print "Fuel:   " + round(fuel:amount) + " (" + fuelPercent + "%)  " at (0,6).
-	if fuelPercent = 100 and orePercent = 100 {
+	if fuel:amount = fuel:capacity and ore:amount = ore:capacity {
 		set fuelFull to true.
 		}
 
-	if chargePercent < 40 or ore:amount = ore:capacity {
+	if chargePercent < 30 or ore:amount = ore:capacity {
 		drills off.
 		}
-	if chargePercent > 40 and orePercent < 50 {
+	else {
 		drills on.
 		}
-	if chargePercent <= 85 or orePercent = 0 {
+
+	if (chargePercent > 10 and chargePercent < 50) or ore:amount = 0 {
 		isru off.
 		}
-	if chargePercent > 85 and orePercent > 0 {
+	else {
 		isru on.
-		}
-	if ore:amount < ore:capacity and fuelPercent = 100 and chargePercent > 40 {
-		drills on.
 		}
 
 	if drills {
@@ -83,6 +79,4 @@ set duration to round(miningFinished - miningStarted,0).
 print "Operation took " + duration + "s." at (0,8).
 deploydrills off.
 fuelcells off.
-set sunArrow to 0.
-CLEARVECDRAWS().
 set warp to 0.
