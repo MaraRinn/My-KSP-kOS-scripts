@@ -424,3 +424,49 @@ function TrueAnomalyFromEccentricAnomaly {
 		}
 	return theta.
 	}
+
+function H {
+	declare parameter Q.
+	declare parameter R.
+
+	declare P is list(0,0,0,0).
+	set P[0] to R[0]*Q[0] - R[1]*Q[1] - R[2]*Q[2] - R[3]*Q[3].
+   set P[1] to R[0]*Q[1] + R[1]*Q[0] - R[2]*Q[3] + R[3]*Q[2].
+   set P[2] to R[0]*Q[2] + R[1]*Q[3] + R[2]*Q[0] - R[3]*Q[1].
+   set P[3] to R[0]*Q[3] - R[1]*Q[2] + R[2]*Q[1] + R[3]*Q[0].
+   return P.
+	}
+
+function VectorToQuaternion {
+	declare parameter vector.
+	set Q to list (0, vector:x, vector:y, vector:z).
+	return Q.
+	}
+
+function QuaternionToVector {
+	declare parameter Q.
+	set vector to V(Q[1], Q[2], Q[3]).
+	return vector.
+	}
+
+function RotationQuaternion {
+	declare parameter rotationAngleDegrees.
+	declare parameter axis.
+	set Q to list(
+		cos(rotationAngleDegrees/2),
+		sin(rotationAngleDegrees/2) * axis:x,
+		sin(rotationAngleDegrees/2) * axis:y,
+		sin(rotationAngleDegrees/2) * axis:z
+		).
+	return Q.
+	}
+
+function InverseQuaternion {
+	declare parameter quaternion.
+	return list(
+		quaternion[0],
+		-quaternion[1],
+		-quaternion[2],
+		-quaternion[3]
+		).
+	}
