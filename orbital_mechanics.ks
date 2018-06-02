@@ -426,8 +426,8 @@ function TrueAnomalyFromEccentricAnomaly {
 	}
 
 function H {
-	declare parameter Q.
 	declare parameter R.
+	declare parameter Q.
 
 	declare P is list(0,0,0,0).
 	set P[0] to R[0]*Q[0] - R[1]*Q[1] - R[2]*Q[2] - R[3]*Q[3].
