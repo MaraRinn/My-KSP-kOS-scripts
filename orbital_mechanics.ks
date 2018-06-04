@@ -234,7 +234,7 @@ function AlterInclination {
 	set tadn to TrueAnomalyOfDescendingNode().
 	set ttdn to TimeToDescendingNode().
 	set ttan to TimeToAscendingNode().
-	set nodeEta to 0.
+	local timeToNode is 0.
 
 	if not atHighestNode {
 		// Use closest node
@@ -261,16 +261,33 @@ function AlterInclination {
 			}
 		}
 
-	set vx to VelocityAt(ship, time:seconds + timeToNode):orbit:mag.
-	print " - vx = " + vx.
-	set dTheta to (newInclination - orbit:inclination).
-	//set dv to sqrt(2 * vx^2 * (1 - cos(dTheta))).
-	set dv to vx * sin(dTheta/2).
-	print " - dv = " + dv.
-	set Vn to cos(dTheta) * dv.
-	set Vp to -abs(sin(dTheta) * dv).
-	set node to node(time:seconds + timeToNode, 0, Vn, Vp).
-	add node.
+	local nodeTime is time:seconds + timeToNode.
+	local dTheta to (newInclination - orbit:inclination).
+	print " - TTN is " + timeToNode.
+	print " - dΘ is " + dTheta.
+	AlterPlane(dTheta, nodeTime, ship).
+	}
+
+function AlterPlane {
+	parameter angle.
+	parameter nodeTime.
+	parameter object is ship.
+
+	print " - node time:" + nodeTime.
+	print " - object:" + object.
+	local progradeVector is VelocityAt(object, nodeTime):orbit.
+	print " - prograde:" + progradeVector + " (" + progradeVector:mag + ")".
+	local positionVector to PositionAt(object, nodeTime).
+	print " - position:" + positionVector.
+	print " - angle:" + angle.
+
+	local newPrograde to RotateVector(progradeVector, angle, -positionVector:normalized).
+	print " - new:" + newPrograde + " (" + newPrograde:mag + ")".
+	local deltaV to newPrograde - progradeVector.
+	print " - dV:" + deltaV + " (" + deltaV:mag + ")".
+	local nodeDetails to MapVectorToSpace(deltaV, positionVector, progradeVector).
+	local newNode to Node(nodeTime, nodeDetails:z ,nodeDetails:y, nodeDetails:x).
+	add newNode.
 	}
 
 function LongitudeFromOrbit {
@@ -476,16 +493,16 @@ function RotateVector {
 	parameter angle.
 	parameter axis.
 
-	set P to VectorToQuaternion(V).
-	set R to RotationQuaternion(rotationDegrees, axis:normalized).
-	set Ri to InverseQuaternion(R).
-	set T to H(R, P).
-	set U to H(T, Ri).
-	set Vrotated to QuaternionToVector(U).
+	local P to VectorToQuaternion(V).
+	local R to RotationQuaternion(angle, axis:normalized).
+	local Ri to InverseQuaternion(R).
+	local T to H(R, P).
+	local U to H(T, Ri).
+	local Vrotated to QuaternionToVector(U).
 	return Vrotated.
 	}
 
-function MapDeltaVVectorToSpace{
+function MapVectorToSpace{
 	parameter dV.
 	parameter positionVector.
 	parameter velocityVector.

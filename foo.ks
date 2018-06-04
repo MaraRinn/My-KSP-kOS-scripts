@@ -1,6 +1,6 @@
 run "orbital_mechanics".
 
-set done to false.
+set done to true.
 set rotationDegrees to 0.
 
 // Vectors
@@ -35,7 +35,7 @@ until done {
 	set deltaVelocityArrow:Start to velocityVector.
 	set deltaVelocityArrow:Vec to deltaV.
 
-	set nodeDetails to MapDeltaVVectorToSpace(deltaV, positionVector, velocityVector).
+	set nodeDetails to MapVectorToSpace(deltaV, positionVector, velocityVector).
 	set progradeProjection to nodeDetails:x.
 	set normalProjection to nodeDetails:y.
 	set radialProjection to nodeDetails:z.
@@ -63,3 +63,5 @@ until done {
 	}
 
 clearvecdraws().
+
+AlterInclination(0).
