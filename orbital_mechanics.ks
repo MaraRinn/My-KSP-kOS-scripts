@@ -470,3 +470,17 @@ function InverseQuaternion {
 		-quaternion[3]
 		).
 	}
+
+function RotateVector {
+	parameter V.
+	parameter angle.
+	parameter axis.
+
+	set P to VectorToQuaternion(V).
+	set R to RotationQuaternion(rotationDegrees, axis:normalized).
+	set Ri to InverseQuaternion(R).
+	set T to H(R, P).
+	set U to H(T, Ri).
+	set Vrotated to QuaternionToVector(U).
+	return Vrotated.
+	}
