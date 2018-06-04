@@ -29,19 +29,36 @@ on abort {
 	}
 
 until done {
-	set rotatedVelocityVector to RotateVector(velocityVector, rotationDegrees, positionVector:Normalized).
+	set rotatedVelocityVector to RotateVector(velocityVector, rotationDegrees, -positionVector:Normalized).
 	set newVelocityArrow:vec to rotatedVelocityVector.
 	set deltaV to rotatedVelocityVector - velocityVector.
 	set deltaVelocityArrow:Start to velocityVector.
 	set deltaVelocityArrow:Vec to deltaV.
-	print "dV: " + deltaV:mag.
+
+	set nodeDetails to MapDeltaVVectorToSpace(deltaV, positionVector, velocityVector).
+	set progradeProjection to nodeDetails:x.
+	set normalProjection to nodeDetails:y.
+	set radialProjection to nodeDetails:z.
+
+	// Construct projection arrows
+	set projectionPoint to velocityVector.
+	set projectedVector to normalVector:Normalized * normalProjection.
+	set normalProjectionArrow:Start to projectionPoint.
+	set normalProjectionArrow:vec to projectedVector.
+	set projectionPoint to projectionPoint + projectedVector.
+
+	set projectedVector to progradeVector:Normalized * progradeProjection.
+	set progradeProjectionArrow:Start to projectionPoint.
+	set progradeProjectionArrow:vec to projectedVector.
+	set projectionPoint to projectionPoint + projectedVector.
+
+	set projectedVector to radialVector:Normalized * radialProjection.
+	set radialProjectionArrow:Start to projectionPoint.
+	set radialProjectionArrow:vec to projectedVector.
+
+	// Debug
+	print "Θ: " + rotationDegrees + " dV: " + round(deltaV:mag,2) + " P:" + round(progradeProjection,2) + " N:" + round(normalProjection,2) + " R:" + round(radialProjection,2).
 	set rotationDegrees to mod(rotationDegrees + 10, 360).
-	set progradeProjection to vDot(deltaV, progradeVector:Normalized).
-	set progradeProjectionArrow:vec to progradeVector:Normalized * progradeProjection.
-	set normalProjection to vDot(deltaV, normalVector:Normalized).
-	set normalProjectionArrow:vec to normalVector:Normalized * normalProjection.
-	set radialProjection to vDot(deltaV, radialVector:Normalized).
-	set radialProjectionArrow:vec to radialVector:Normalized * radialProjection.
 	wait 1.
 	}
 

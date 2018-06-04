@@ -484,3 +484,20 @@ function RotateVector {
 	set Vrotated to QuaternionToVector(U).
 	return Vrotated.
 	}
+
+function MapDeltaVVectorToSpace{
+	parameter dV.
+	parameter positionVector.
+	parameter velocityVector.
+
+	parameter Vx is velocityVector:Normalized.
+	parameter Vy is VectorCrossProduct(positionVector, Vx):Normalized.
+	parameter Vz is VectorCrossProduct(Vy, Vx):Normalized.
+
+	set Px to vDot(dV, Vx).
+	set Py to vDot(dV, Vy).
+	set Pz to vDot(dV, Vz).
+	
+	set nodeDetails to V(Px, Py, Pz).
+	return nodeDetails.
+	}
