@@ -230,10 +230,10 @@ function AlterInclination {
 	parameter newInclination.
 	parameter atHighestNode is true. // highest ¬nearest
 
-	set taan to TrueAnomalyOfAscendingNode().
-	set tadn to TrueAnomalyOfDescendingNode().
-	set ttdn to TimeToDescendingNode().
-	set ttan to TimeToAscendingNode().
+	local taan is TrueAnomalyOfAscendingNode().
+	local tadn is TrueAnomalyOfDescendingNode().
+	local ttdn is TimeToDescendingNode().
+	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
 
 	if not atHighestNode {
@@ -262,7 +262,7 @@ function AlterInclination {
 		}
 
 	local nodeTime is time:seconds + timeToNode.
-	local dTheta to (newInclination - orbit:inclination).
+	local dTheta is (newInclination - orbit:inclination).
 	print " - TTN is " + timeToNode.
 	print " - dΘ is " + dTheta.
 	AlterPlane(dTheta, nodeTime, ship).
@@ -275,6 +275,7 @@ function AlterPlane {
 
 	print " - node time:" + nodeTime.
 	print " - object:" + object.
+	print " - body:" + object:orbit:body.
 	local progradeVector is VelocityAt(object, nodeTime):orbit.
 	print " - prograde:" + progradeVector + " (" + progradeVector:mag + ")".
 	local positionVector to PositionAt(object, nodeTime).
