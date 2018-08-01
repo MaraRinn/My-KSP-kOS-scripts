@@ -278,7 +278,7 @@ function AlterPlane {
 	print " - body:" + object:orbit:body.
 	local progradeVector is VelocityAt(object, nodeTime):orbit.
 	print " - prograde:" + progradeVector + " (" + progradeVector:mag + ")".
-	local positionVector to PositionAt(object, nodeTime).
+	local positionVector to PositionAt(object, nodeTime) - object:orbit:body:position.
 	print " - position:" + positionVector.
 	print " - angle:" + angle.
 
