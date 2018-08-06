@@ -282,12 +282,16 @@ function AlterPlane {
 	print " - position:" + positionVector.
 	print " - angle:" + angle.
 
-	local newPrograde to RotateVector(progradeVector, angle, -positionVector:normalized).
+	local newPrograde to RotateVector(progradeVector, angle, -positionVector).
 	print " - new:" + newPrograde + " (" + newPrograde:mag + ")".
 	local deltaV to newPrograde - progradeVector.
 	print " - dV:" + deltaV + " (" + deltaV:mag + ")".
 	local nodeDetails to MapVectorToSpace(deltaV, positionVector, progradeVector).
-	local newNode to Node(nodeTime, nodeDetails:z ,nodeDetails:y, nodeDetails:x).
+	set Dp to nodeDetails:x.
+	set Dn to nodeDetails:y.
+	set Dr to nodeDetails:z.
+	print " - node: P:" + Dp + " R:" + Dr + " N:" + Dn.
+	local newNode to Node(nodeTime, Dr, Dn, Dp).
 	add newNode.
 	}
 
@@ -472,9 +476,9 @@ function RotationQuaternion {
 	declare parameter axis.
 	set Q to list(
 		cos(rotationAngleDegrees/2),
-		sin(rotationAngleDegrees/2) * axis:x,
-		sin(rotationAngleDegrees/2) * axis:y,
-		sin(rotationAngleDegrees/2) * axis:z
+		sin(rotationAngleDegrees/2) * axis:x / axis:mag,
+		sin(rotationAngleDegrees/2) * axis:y / axis:mag,
+		sin(rotationAngleDegrees/2) * axis:z / axis:mag
 		).
 	return Q.
 	}
@@ -495,7 +499,7 @@ function RotateVector {
 	parameter axis.
 
 	local P to VectorToQuaternion(V).
-	local R to RotationQuaternion(angle, axis:normalized).
+	local R to RotationQuaternion(angle, axis).
 	local Ri to InverseQuaternion(R).
 	local T to H(R, P).
 	local U to H(T, Ri).
@@ -508,14 +512,15 @@ function MapVectorToSpace{
 	parameter positionVector.
 	parameter velocityVector.
 
-	parameter Vx is velocityVector:Normalized.
-	parameter Vy is VectorCrossProduct(positionVector, Vx):Normalized.
-	parameter Vz is VectorCrossProduct(Vy, Vx):Normalized.
+	// Remembering KSP is left-handed
+	parameter Vp is velocityVector. // prograde vector
+	parameter Vn is VectorCrossProduct(positionVector, velocityVector). // normal vector
+	parameter Vr is VectorCrossProduct(Vp, Vn). // radial vector
 
-	set Px to vDot(dV, Vx).
-	set Py to vDot(dV, Vy).
-	set Pz to vDot(dV, Vz).
+	set Np to vDot(dV, Vp) / Vp:mag.
+	set Nn to vDot(dV, Vn) / Vn:mag.
+	set Nr to vDot(dV, Vr) / Vr:mag.
 	
-	set nodeDetails to V(Px, Py, Pz).
+	set nodeDetails to V(Np, Nn, Nr).
 	return nodeDetails.
 	}
