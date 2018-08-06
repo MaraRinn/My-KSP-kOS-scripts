@@ -230,11 +230,11 @@ function AlterInclination {
 	parameter newInclination.
 	parameter atHighestNode is true. // highest ¬nearest
 
-	set taan to TrueAnomalyOfAscendingNode().
-	set tadn to TrueAnomalyOfDescendingNode().
-	set ttdn to TimeToDescendingNode().
-	set ttan to TimeToAscendingNode().
-	set nodeEta to 0.
+	local taan is TrueAnomalyOfAscendingNode().
+	local tadn is TrueAnomalyOfDescendingNode().
+	local ttdn is TimeToDescendingNode().
+	local ttan is TimeToAscendingNode().
+	local timeToNode is 0.
 
 	if not atHighestNode {
 		// Use closest node
@@ -261,16 +261,38 @@ function AlterInclination {
 			}
 		}
 
-	set vx to VelocityAt(ship, time:seconds + timeToNode):orbit:mag.
-	print " - vx = " + vx.
-	set dTheta to (newInclination - orbit:inclination).
-	//set dv to sqrt(2 * vx^2 * (1 - cos(dTheta))).
-	set dv to vx * sin(dTheta/2).
-	print " - dv = " + dv.
-	set Vn to cos(dTheta) * dv.
-	set Vp to -abs(sin(dTheta) * dv).
-	set node to node(time:seconds + timeToNode, 0, Vn, Vp).
-	add node.
+	local nodeTime is time:seconds + timeToNode.
+	local dTheta is (newInclination - orbit:inclination).
+	print " - TTN is " + timeToNode.
+	print " - dΘ is " + dTheta.
+	AlterPlane(dTheta, nodeTime, ship).
+	}
+
+function AlterPlane {
+	parameter angle.
+	parameter nodeTime.
+	parameter object is ship.
+
+	print " - node time:" + nodeTime.
+	print " - object:" + object.
+	print " - body:" + object:orbit:body.
+	local progradeVector is VelocityAt(object, nodeTime):orbit.
+	print " - prograde:" + progradeVector + " (" + progradeVector:mag + ")".
+	local positionVector to PositionAt(object, nodeTime) - object:orbit:body:position.
+	print " - position:" + positionVector.
+	print " - angle:" + angle.
+
+	local newPrograde to RotateVector(progradeVector, angle, -positionVector).
+	print " - new:" + newPrograde + " (" + newPrograde:mag + ")".
+	local deltaV to newPrograde - progradeVector.
+	print " - dV:" + deltaV + " (" + deltaV:mag + ")".
+	local nodeDetails to MapVectorToSpace(deltaV, positionVector, progradeVector).
+	set Dp to nodeDetails:x.
+	set Dn to nodeDetails:y.
+	set Dr to nodeDetails:z.
+	print " - node: P:" + Dp + " R:" + Dr + " N:" + Dn.
+	local newNode to Node(nodeTime, Dr, Dn, Dp).
+	add newNode.
 	}
 
 function LongitudeFromOrbit {
@@ -423,4 +445,82 @@ function TrueAnomalyFromEccentricAnomaly {
 		set theta to theta + 360.
 		}
 	return theta.
+	}
+
+function H {
+	declare parameter R.
+	declare parameter Q.
+
+	declare P is list(0,0,0,0).
+	set P[0] to R[0]*Q[0] - R[1]*Q[1] - R[2]*Q[2] - R[3]*Q[3].
+   set P[1] to R[0]*Q[1] + R[1]*Q[0] - R[2]*Q[3] + R[3]*Q[2].
+   set P[2] to R[0]*Q[2] + R[1]*Q[3] + R[2]*Q[0] - R[3]*Q[1].
+   set P[3] to R[0]*Q[3] - R[1]*Q[2] + R[2]*Q[1] + R[3]*Q[0].
+   return P.
+	}
+
+function VectorToQuaternion {
+	declare parameter vector.
+	set Q to list (0, vector:x, vector:y, vector:z).
+	return Q.
+	}
+
+function QuaternionToVector {
+	declare parameter Q.
+	set vector to V(Q[1], Q[2], Q[3]).
+	return vector.
+	}
+
+function RotationQuaternion {
+	declare parameter rotationAngleDegrees.
+	declare parameter axis.
+	set Q to list(
+		cos(rotationAngleDegrees/2),
+		sin(rotationAngleDegrees/2) * axis:x / axis:mag,
+		sin(rotationAngleDegrees/2) * axis:y / axis:mag,
+		sin(rotationAngleDegrees/2) * axis:z / axis:mag
+		).
+	return Q.
+	}
+
+function InverseQuaternion {
+	declare parameter quaternion.
+	return list(
+		quaternion[0],
+		-quaternion[1],
+		-quaternion[2],
+		-quaternion[3]
+		).
+	}
+
+function RotateVector {
+	parameter V.
+	parameter angle.
+	parameter axis.
+
+	local P to VectorToQuaternion(V).
+	local R to RotationQuaternion(angle, axis).
+	local Ri to InverseQuaternion(R).
+	local T to H(R, P).
+	local U to H(T, Ri).
+	local Vrotated to QuaternionToVector(U).
+	return Vrotated.
+	}
+
+function MapVectorToSpace{
+	parameter dV.
+	parameter positionVector.
+	parameter velocityVector.
+
+	// Remembering KSP is left-handed
+	parameter Vp is velocityVector. // prograde vector
+	parameter Vn is VectorCrossProduct(positionVector, velocityVector). // normal vector
+	parameter Vr is VectorCrossProduct(Vp, Vn). // radial vector
+
+	set Np to vDot(dV, Vp) / Vp:mag.
+	set Nn to vDot(dV, Vn) / Vn:mag.
+	set Nr to vDot(dV, Vr) / Vr:mag.
+	
+	set nodeDetails to V(Np, Nn, Nr).
+	return nodeDetails.
 	}
