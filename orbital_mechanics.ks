@@ -239,32 +239,26 @@ function AlterInclination {
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
-			print " - DN is closer".
 			set timeToNode to ttdn.
 			set newInclination to -newInclination.
 			}
 		else {
-			print " - AN is closer".
 			set timeToNode to ttan.
 			}
 		}
 	else {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
-			print " - DN is higher".
 			set timeToNode to ttdn.
 			set newInclination to -newInclination.
 			}
 		else {
-			print " - AN is higher".
 			set timeToNode to ttan.
 			}
 		}
 
 	local nodeTime is time:seconds + timeToNode.
 	local dTheta is (newInclination - orbit:inclination).
-	print " - TTN is " + timeToNode.
-	print " - dΘ is " + dTheta.
 	AlterPlane(dTheta, nodeTime, ship).
 	}
 
@@ -273,24 +267,15 @@ function AlterPlane {
 	parameter nodeTime.
 	parameter object is ship.
 
-	print " - node time:" + nodeTime.
-	print " - object:" + object.
-	print " - body:" + object:orbit:body.
 	local progradeVector is VelocityAt(object, nodeTime):orbit.
-	print " - prograde:" + progradeVector + " (" + progradeVector:mag + ")".
 	local positionVector to PositionAt(object, nodeTime) - object:orbit:body:position.
-	print " - position:" + positionVector.
-	print " - angle:" + angle.
 
 	local newPrograde to RotateVector(progradeVector, angle, -positionVector).
-	print " - new:" + newPrograde + " (" + newPrograde:mag + ")".
 	local deltaV to newPrograde - progradeVector.
-	print " - dV:" + deltaV + " (" + deltaV:mag + ")".
 	local nodeDetails to MapVectorToSpace(deltaV, positionVector, progradeVector).
 	set Dp to nodeDetails:x.
 	set Dn to nodeDetails:y.
 	set Dr to nodeDetails:z.
-	print " - node: P:" + Dp + " R:" + Dr + " N:" + Dn.
 	local newNode to Node(nodeTime, Dr, Dn, Dp).
 	add newNode.
 	}
