@@ -235,12 +235,13 @@ function AlterInclination {
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
+	local dTheta is newInclination - orbit:inclination.
 
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -250,7 +251,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -258,7 +259,6 @@ function AlterInclination {
 		}
 
 	local nodeTime is time:seconds + timeToNode.
-	local dTheta is (newInclination - orbit:inclination).
 	AlterPlane(dTheta, nodeTime, ship).
 	}
 
@@ -459,11 +459,15 @@ function QuaternionToVector {
 function RotationQuaternion {
 	declare parameter rotationAngleDegrees.
 	declare parameter axis.
+
+	set halfCos to cos(rotationAngleDegrees/2).
+	set halfSin to sin(rotationAngleDegrees/2).
+
 	set Q to list(
-		cos(rotationAngleDegrees/2),
-		sin(rotationAngleDegrees/2) * axis:x / axis:mag,
-		sin(rotationAngleDegrees/2) * axis:y / axis:mag,
-		sin(rotationAngleDegrees/2) * axis:z / axis:mag
+		halfCos,
+		halfSin * axis:x / axis:mag,
+		halfSin * axis:y / axis:mag,
+		halfSin * axis:z / axis:mag
 		).
 	return Q.
 	}
