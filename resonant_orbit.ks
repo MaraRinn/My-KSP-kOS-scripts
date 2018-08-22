@@ -26,7 +26,7 @@ print "====================".
 print "Periapsis: " + desiredPeriapsis + " (radius:" + periapsisRadius + ")".
 print "Apoapsis:  " + desiredApoapsis + " (radius:" + apoapsisRadius + ")".
 print " ".
-print "Resonant Apoapsis: " + resonantApoapsis + "(radius:" + resonantApoapsisRadius + ")".
+print "Resonant Apoapsis: " + round(resonantApoapsis, 0) + " (radius:" + round(resonantApoapsisRadius, 0) + ")".
 print " ".
 print "Base Period:     " + round(stablePeriod, 0).
 print "Resonant Period: " + round(resonantPeriod, 0).

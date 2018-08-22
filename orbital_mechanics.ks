@@ -50,13 +50,13 @@ function SpeedFromSemiMajorAxisRadiusMu {
 function ResonantOrbit {
 	parameter peRadius.
 	parameter apRadius.
-	parameter ratioA. // For A orbits at sma
-	parameter ratioB. // Provide B orbits at resonance
-	// eg: for three satellites in an equilateral triangle, ratio would be 4:3
+	parameter ratioResonant. // Number of resonant orbits
+	parameter ratioBase.     // Number of base orbits
+	// eg: for three satellites in an equilateral triangle, ratio would be 4 resonant to 3 base
 	// this allows the satellite bus to lag by 1/3 an orbit each cycle
 
 	set baseSMA to (peRadius + apRadius)/2.
-	set newSMA to (ratioA^2 * baseSMA^3 / ratioB^2)^(1/3).
+	set newSMA to (ratioResonant^2 * baseSMA^3 / ratioBase^2)^(1/3).
 	set newAPRadius to newSMA * 2 - peRadius.
 	// Returns the new apoapsis (radius, not altitude). 
 	return newAPRadius.
