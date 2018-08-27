@@ -75,7 +75,7 @@ set message to List("reboot").
 myConnection:SendMessage(message).
 wait 10.
 print "Sending deploy command.".
-set message to List("deploy").
+set message to List("deploy", 200000).
 myConnection:SendMessage(message).
 
 until relayDeployed {
@@ -83,5 +83,8 @@ until relayDeployed {
 	set thisMessage to ship:messages:pop.
 	if thisMessage:content = "deployed" { set relayDeployed to true. }
 	}
+set message to List("goodbye").
+myConnection:SendMessage(message).
+
 set kUniverse:ActiveVessel to ship.
 wait 0.1.

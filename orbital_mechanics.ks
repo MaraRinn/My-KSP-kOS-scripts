@@ -273,8 +273,8 @@ function AlterInclination {
 		}
 
 	local nodeTime is time:seconds + timeToNode.
-	local dTheta is (newInclination - orbit:inclination).
-	AlterPlane(dTheta, nodeTime, ship).
+	set newNode to AlterPlane(dTheta, nodeTime, ship).
+	return newNode.
 	}
 
 function AlterPlane {
@@ -293,6 +293,7 @@ function AlterPlane {
 	set Dr to nodeDetails:z.
 	local newNode to Node(nodeTime, Dr, Dn, Dp).
 	add newNode.
+	return newNode.
 	}
 
 function LongitudeFromOrbit {

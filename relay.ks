@@ -2,6 +2,7 @@ runoncepath("orbital_mechanics").
 
 set queue to ship:messages.
 set Ship:Control:PilotMainThrottle to 0.
+set deploymentComplete to false.
 
 function deploy {
 	parameter message.
@@ -24,7 +25,9 @@ function deploy {
 
 	if core:tag:contains("Relay") { create_circularise_node(false). }
 	if core:tag:contains("Survey") {
-		AlterInclination(90).
+		set lastNode to AlterInclination(90).
+		set lastNode to AlterPeriapsis(message:content[1], lastNode:orbit, time:seconds + lastNode:ETA).
+		set lastNode to AlterApoapsis(message:content[1], lastNode:orbit, time:seconds + lastNode:ETA).
 		for part in ship:parts {
 			for moduleName in part:modules {
 				set module to part:getModule(moduleName).
@@ -50,7 +53,6 @@ function deploy {
 function handleMessage {
 	parameter message.
 
-	set kUniverse:ActiveVessel to ship.
 	if hasNode {
 		set lastNode to AllNodes[AllNodes:Length - 1].
 		set lastOrbit to lastNode:orbit.
@@ -65,26 +67,33 @@ function handleMessage {
 		reboot.
 		}
 	if thisMessage:content[0] = "deploy" {
+		set kUniverse:ActiveVessel to ship.
 		deploy(thisMessage).
 		}
 	if thisMessage:content[0] = "apoapsis" {
+		set kUniverse:ActiveVessel to ship.
 		set desiredApoapsis to thisMessage:content[1].
 		print "Setting apoapsis to " + desiredApoapsis.
 		AlterApoapsis(desiredApoapsis, lastOrbit, noEarlierThan).
 		}
 	if thisMessage:content[0] = "periapsis" {
+		set kUniverse:ActiveVessel to ship.
 		set desiredPeriapsis to thisMessage:content[1].
 		print "Setting periapsis to " + desiredPeriapsis.
 		AlterPeriapsis(desiredPeriapsis, lastOrbit, noEarlierThan).
 		}
 	if thisMessage:content[0] = "inclination" {
+		set kUniverse:ActiveVessel to ship.
 		set desiredInclination to thisMessage:content[1].
 		print "Setting inclination to " + desiredInclination.
 		AlterInclination(desiredInclination). // FIXME - AlterInclination is fragile on orbits
 		}
+	if thisMessage:content[0] = "goodbye" {
+		set deploymentComplete to true.
+		}
 	}
 
-until false {
+until deploymentComplete {
 	wait 10.
 	print "Hello world.".
 	if not queue:empty {

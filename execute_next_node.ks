@@ -19,7 +19,7 @@ else {
 	}
 lock acceleration to ship:maxthrust / ship:mass.
 lock burnDuration to burnvector:mag / acceleration.
-lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 5). 
+lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 1). 
 lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.25) or (burnvector:mag < 0.001).
 
 // Honour Kerbal Alarm Clock
@@ -108,12 +108,11 @@ until done {
 			set throttleSetting to 0.
 			}
 		set desiredThrottle to throttleSetting.
-		print "throttle to " + round(desiredThrottle, 2).
 		}
 	wait 0.1.
 	}
 
-print "finishing manoeuvre.".
+print "Manoeuvre completed.".
 set desiredThrottle to 0.
 unlock all.
 remove nextnode.
