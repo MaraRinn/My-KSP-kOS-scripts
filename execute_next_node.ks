@@ -6,129 +6,115 @@
 //  - perform burn
 //  - delete the manoeuvre node
 
-clearscreen.
-
-set nd to nextnode.
+set myNode to nextnode.
 set NAVMODE to "Orbit".
-lock burnvector to nd:deltav.
+if sas and sasmode = "PROGRADE" {
+	lock burnvector to prograde:vector.
+	}
+else if sas and sasmode = "RETROGRADE" {
+	lock burnvector to retrograde:vector.
+	}
+else {
+	lock burnvector to myNode:deltav.
+	}
 lock acceleration to ship:maxthrust / ship:mass.
 lock burnDuration to burnvector:mag / acceleration.
-lock guardTime to time:seconds + nd:eta - (burnDuration/2 + 5). 
-lock dPitch to round(abs(burnvector:direction:pitch - ship:facing:pitch),2).
-lock dYaw to round(abs(burnvector:direction:yaw - ship:facing:yaw),2).
+lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 5). 
+lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.25) or (burnvector:mag < 0.001).
 
-// Realignment
-function AlignToBurn {
-	print "Aligning to burn vector.              " at (0,3).
-	until dPitch < 0.15 and dYaw < 0.15 {
-		print "   dPitch: " + dPitch + "        " at (0,4).
-		print "     dYaw: " + dYaw + "        " at (0,5).
+// Honour Kerbal Alarm Clock
+function KACAlarmWithin {
+	parameter seconds.
+	if addons:available("KAC") {
+		for alarm in addons:KAC:Alarms {
+			if alarm:remaining > 0 and alarm:remaining <= seconds { return true. }
+			}
 		}
-	print "                                   " at (0,3).
-	print "                                   " at (0,4).
-	print "                                   " at (0,5).	
+	return false.
+	}
+
+function NextKACAlarm {
+	set remaining to 999999.
+	for alarm in addons:KAC:Alarms {
+		if alarm:remaining < remaining {
+			set remaining to alarm:remaining.
+			set nextAlarm to alarm.
+			}
+		}
+	return nextAlarm.
 	}
 
 // Warping
 function WarpToTime {
 	parameter destinationTime.
-	until time:seconds > destinationTime {
+	set ratesList to kUniverse:timeWarp:RailsRateList.
+	until time:seconds >= destinationTime {
 		set interval to destinationTime - time:seconds.
-		print "Waiting " + round(interval) + "s.              " at (0,4).
-		if interval > 150000 {
-			set warp to 7.
-			}
-		else if interval > 15000 {
-			set warp to 6.
-			}
-		else if interval > 1500 {
-			set warp to 5.
-			}
-		else if interval > 150 {
-			set warp to 4.
-			}
-		else if interval > 75 {
-			set warp to 3.
-			}
-		else if interval > 15 {
-			set warp to 2.
-			}
-		else if interval > 8 {
-			set warp to 1.
+		// It takes about 1 real second to speed up or slow down warp.
+		from { set i to ratesList:Length - 1. } until (ratesList[i] < (interval)) or (i = 0) step { set i to i - 1.} do { }.
+		set waitTime to interval + time:seconds - ratesList[i].
+		set kUniverse:timeWarp:Warp to i.
+		if KACAlarmWithin(interval) {
+			print "Waiting for KAC alarm.".
+			wait until time:seconds > time:seconds + NextKACAlarm:remaining + 5.
 			}
 		else {
-			set warp to 0.
+			wait until time:seconds >= waitTime.
 			}
-		wait 1.
 		}
+	set kUniverse:timeWarp:Warp to 0.
+	wait until kUniverse:timeWarp:IsSettled.
 	}
 
-
-run deltavstage.
-set dV to deltaVstage().
-if dV < burnvector:mag {
-	stage.
-	wait 1.
-	until maxthrust > 0 {
-		stage.
-		wait 1.
-		}
-	}
-
-set useSas to false.
-if useSas {
+if sas {
 	unlock steering.
-	sas on.
 	wait 0.5. // SAS turns on "stability" mode by default.
-	set sasmode to "MANEUVER".
+	if NextNode:deltav:mag > 0.01 and not (sasmode = "PROGRADE" or sasmode = "RETROGRADE") { set sasmode to "MANEUVER". }.
 	}
 else {
-	sas off.
 	lock steering to burnvector:direction.
 	}
-AlignToBurn().
+wait until burnIsAligned.
 
 // Warp to 10 minute mark to realign.
-if guardTime - time:seconds > 800 {
-	print "Warping to realignment point.    " at (0,3).
-	set alignTime to time:seconds + nd:eta - 600.
+if guardTime - time:seconds > 600 {
+	print "Warping to realignment point.".
+	set alignTime to time:seconds + myNode:eta - 600.
 	WarpToTime(alignTime).
-	AlignToBurn().
+	wait until burnIsAligned.
 	}
 
 // Warp to the manoeuvre node
-print "Warping to node.               " at (0,3).
+print "Warping to node.".
 WarpToTime(guardTime).
-set warp to 0.
-wait until kuniverse:timewarp:issettled.
 
-print "Performing manoeuvre.             " at (0,3).
-print "                                  " at (0,4).
+print "Performing manoeuvre.".
 wait until time:seconds > guardTime.
 
-set dV0 to burnvector.
 set done to false.
 set desiredThrottle to 0.
 lock throttle to desiredThrottle.
 until done {
-	if MAXTHRUST = 0 {
-		STAGE.
-		}
-	else if dPitch > 0.15 or dYaw > 0.15 {
+	if not burnIsAligned {
+		print "aligning".
 		set desiredThrottle to 0.
-		AlignToBurn().
+		wait until burnIsAligned.
 		}
 	else {
-		set throttleSetting to min(burnvector:mag/acceleration/5, 1).
-		if burnvector:mag < 0.11 {
+		set throttleIntent to burnvector:mag/acceleration.
+		set throttleSetting to min(throttleIntent, 1).
+		if burnvector:mag < 0.05 or sasMode="PROGRADE" or sasMode="RETROGRADE" {
 			set done to true.
 			set throttleSetting to 0.
 			}
 		set desiredThrottle to throttleSetting.
+		print "throttle to " + round(desiredThrottle, 2).
 		}
 	wait 0.1.
 	}
 
+print "finishing manoeuvre.".
+set desiredThrottle to 0.
 unlock all.
-wait 1.
 remove nextnode.
+wait 1.
