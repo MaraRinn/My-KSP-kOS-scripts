@@ -4,6 +4,7 @@ set queue to ship:messages.
 set Ship:Control:PilotMainThrottle to 0.
 
 function deploy {
+	parameter message.
 	set engineFound to false.
 	set part to core:part.
 
@@ -36,44 +37,51 @@ function deploy {
 				}
 			}
 		}
+	sas on.
+	wait 1.
+	set sasmode to "MANEUVER".
 	set ship:name to core:tag.
 	wait 1. // Give time for KAC to pick up this node.
+	runpath("execute_next_node").
+	set myConnection to message:sender:connection.
+	myConnection:SendMessage("deployed").
 	}
 
 function handleMessage {
 	parameter message.
 
-	set oldShip to kUniverse:ActiveVessel.
 	set kUniverse:ActiveVessel to ship.
 	if hasNode {
 		set lastNode to AllNodes[AllNodes:Length - 1].
 		set lastOrbit to lastNode:orbit.
-		set timeOfInterest to lastNode:eta + time:seconds.
+		set noEarlierThan to lastNode:eta + time:seconds.
 		}
 	else {
 		set lastOrbit to orbit.
-		set timeOfInterest to time:seconds.
+		set noEarlierThan to time:seconds.
 		}
 
+	if thisMessage:content[0] = "reboot" {
+		reboot.
+		}
 	if thisMessage:content[0] = "deploy" {
-		deploy.
+		deploy(thisMessage).
 		}
 	if thisMessage:content[0] = "apoapsis" {
 		set desiredApoapsis to thisMessage:content[1].
 		print "Setting apoapsis to " + desiredApoapsis.
-		AlterApoapsis(desiredApoapsis, lastOrbit, timeOfInterest).
+		AlterApoapsis(desiredApoapsis, lastOrbit, noEarlierThan).
 		}
 	if thisMessage:content[0] = "periapsis" {
 		set desiredPeriapsis to thisMessage:content[1].
 		print "Setting periapsis to " + desiredPeriapsis.
-		AlterPeriapsis(desiredPeriapsis, lastOrbit, timeOfInterest).
+		AlterPeriapsis(desiredPeriapsis, lastOrbit, noEarlierThan).
 		}
 	if thisMessage:content[0] = "inclination" {
 		set desiredInclination to thisMessage:content[1].
 		print "Setting inclination to " + desiredInclination.
 		AlterInclination(desiredInclination). // FIXME - AlterInclination is fragile on orbits
 		}
-	set kUniverse:ActiveVessel to oldShip.
 	}
 
 until false {

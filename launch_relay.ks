@@ -4,11 +4,7 @@
 //
 // Deployment occurs in sequence, with one satellite deployed at each periapsis of the resonant orbit.
 parameter altitude is orbit:periapsis.
-
-sas on.
-wait 1.
-set sasmode to "RETROGRADE".
-wait until vang(-velocity:orbit, ship:facing:vector) < 0.25.
+set relayDeployed to false.
 
 function NewVessels {
 	set myTargets to List().
@@ -26,8 +22,10 @@ function LoadProgram {
 	parameter program.
 	set processor to kOSPart:getModule("kOSProcessor").
 	set processor:bootfilename to program.
-	copypath("0:/" + program, processor:volume:root).
-	copypath("0:/orbital_mechanics.ks", processor:volume:root).
+	set requiredFiles to List(program, "orbital_mechanics.ks", "execute_next_node.ks").
+	for file in requiredFiles {
+		copypath("0:/" + file, processor:volume:root).
+		}
 	processor:deactivate.
 	processor:activate.
 	}
@@ -72,5 +70,18 @@ set newSatellite to newTargets[0].
 set myConnection to newSatellite:connection.
 wait until newSatellite:distance > 20.
 set kuniverse:timewarp:rate to 1.
+print "Sending reboot command.".
+set message to List("reboot").
+myConnection:SendMessage(message).
+wait 10.
+print "Sending deploy command.".
 set message to List("deploy").
 myConnection:SendMessage(message).
+
+until relayDeployed {
+	wait until not ship:messages:empty.
+	set thisMessage to ship:messages:pop.
+	if thisMessage:content = "deployed" { set relayDeployed to true. }
+	}
+set kUniverse:ActiveVessel to ship.
+wait 0.1.

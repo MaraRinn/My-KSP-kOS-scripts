@@ -3,7 +3,7 @@ parameter desiredApoapsis.
 parameter ratioA.
 parameter ratioB.
 
-run "orbital_mechanics".
+runoncepath("orbital_mechanics").
 
 for node in allnodes {
 	remove node.
