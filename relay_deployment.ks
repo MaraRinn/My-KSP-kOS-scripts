@@ -1,28 +1,74 @@
+parameter numberOfRelays is 4.
+
 runoncepath("orbital_mechanics.ks").
+
+function withinError {
+	parameter a.
+	parameter b.
+	parameter maxRelativeError is 0.005.
+	set error to abs(b-a).
+	set relativeError to error / min(a,b).
+	if relativeError < maxRelativeError { return true. }
+	return false.
+	}
 
 sas on.
 wait 1.
-set sasmode to "RETROGRADE".
-set deployPoint to eta:periapsis - 300.
-if deployPoint < 0 {
-	set deployPoint to deployPoint + orbit:period.
-	}
+
 if hasNode {
+	print "Executing manoeuvre.".
 	run execute_next_node.
-	reboot.
 	}
-else if eta:periapsis < 300 {
-	set relayCandidates to ship:partstaggedpattern("Relay \d").
-	set surveyCandidates to ship:partstaggedpattern("Survey").
-	if (relayCandidates:length > 0 or surveyCandidates:length > 0) {
-		run launch_relay.
-		reboot.
-		}
-	set core:bootfilename to "".
-	reboot.
+
+set relayCandidates to ship:partstaggedpattern("Relay \d").
+set surveyCandidates to ship:partstaggedpattern("Survey").
+
+set desiredRelayPeriod to body:rotationperiod.
+lock desiredRelaySMA to SemiMajorAxisFromPeriod(desiredRelayPeriod).
+if desiredRelaySMA > body:SOIradius {
+	set desiredRelayPeriod to body:rotationperiod / 2.
 	}
+set desiredRelayAltitude to desiredRelaySMA - body:radius.
+set desiredDeployerSMA to SemiMajorAxisFromPeriod(desiredRelayPeriod * (numberOfRelays + 1)/numberOfRelays).
+set desiredDeployerApoapsis to 2 * desiredDeployerSMA - desiredRelaySMA - body:radius.
+set desiredDeployerPeriapsis to desiredRelaySMA - body:radius.
+
+if not withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
+	print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
+	AlterApoapsis(desiredDeployerApoapsis).
+	set sasmode to "MANEUVER".
+	}
+else if withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
+	print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
+	AlterPeriapsis(desiredDeployerPeriapsis).
+	set sasmode to "MANEUVER".
+	}
+else if withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
+	print "Fiddling with the orbit a bit.".
+	AlterPeriapsis(desiredDeployerApoapsis).
+	set sasmode to "MANEUVER".
+	}
+
+// At this point the deployer is on the appropriate orbit.
 else {
-	set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
-	add destinationNode.
-	reboot.
+	print "Orbit looks good.".
+	set sasmode to "RETROGRADE".
+	set deployPoint to eta:periapsis - 300.
+	if deployPoint < 0 {
+		set deployPoint to deployPoint + orbit:period.
+		}
+	if eta:periapsis < 300 {
+		if (relayCandidates:length > 0 or surveyCandidates:length > 0) {
+			print "Launching relay.".
+			run launch_relay.
+			}
+		else {
+			print "Deployment complete.".
+			set core:bootfilename to "".
+			}
+		}
+	else {
+		set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
+		add destinationNode.
+		}
 	}

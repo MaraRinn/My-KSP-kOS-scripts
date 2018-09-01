@@ -48,6 +48,7 @@ function deploy {
 	runpath("execute_next_node").
 	set myConnection to message:sender:connection.
 	myConnection:SendMessage("deployed").
+	set kUniverse:ActiveVessel to message:sender.
 	}
 
 function handleMessage {
