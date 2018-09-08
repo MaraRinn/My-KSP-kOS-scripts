@@ -410,7 +410,8 @@ function MeanAnomalyFromOrbit {
 	set secondsSinceEpoch to timeOfInterest - orbitOfInterest:epoch.
 	set totalOrbits to secondsSinceEpoch / orbitPeriod.
 	set orbitFraction to totalOrbits - floor(totalOrbits).
-	return orbitFraction * 360 + orbitOfInterest:meanAnomalyAtEpoch.
+	set meanAnomaly to BindAngleTo360(orbitFraction * 360 + orbitOfInterest:meanAnomalyAtEpoch).
+	return meanAnomaly.
 	}
 
 function MeanAnomalyFromPeriodEpochAngleTime {
