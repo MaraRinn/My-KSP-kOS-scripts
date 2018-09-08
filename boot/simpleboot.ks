@@ -1,4 +1,4 @@
-print "Booting.".
+print "Booting " + core:tag.
 switch to 0.
 runoncepath("checkports").
 set launch_delay_full_throttle to false.

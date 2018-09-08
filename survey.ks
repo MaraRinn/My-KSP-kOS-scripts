@@ -8,80 +8,84 @@ on Abort {
 	set deploymentComplete to true.
 	}
 
-function desiredVelocity {
-	parameter myOrbit is orbit.
-
-	set intendedPeriod to myOrbit:body:rotationPeriod.
-	set desiredRadius to SemiMajorAxisFromPeriod(intendedPeriod).
-	if desiredRadius > myOrbit:body:SOIRadius {
-		set desiredRadius to desiredRadius / 2.
-		}
-
-	set intendedVelocity to VelocityAtR(altitude + orbit:body:radius, desiredRadius, orbit:body:mu).
-	return intendedVelocity.
-	}
-
-function AdjustOrbit {
-	sas on.
-	wait 0.1.
-	
-	set intendedVelocity to desiredVelocity.
-	print "Intended: " + round(intendedVelocity,3) + "m/s Actual: " + round(velocity:orbit:mag,3) + "m/s".
-	set velocityError to intendedVelocity - velocity:orbit:mag.
-
-	if (velocityError > 0) { set sasmode to "PROGRADE". }
-	if (velocityError < 0) { set sasmode to "RETROGRADE". }
-	if (abs(velocityError) < 0.001) {
-		set deploymentComplete to true.
-		return.
-		}
-
-	set velocityError to abs(velocityError).
-	print "Adjusting velocity by about " + round(velocityError,3) + "m/s".
-	set maxAcceleration to maxThrust / mass.
-	if velocityError > maxAcceleration {
-		set intendedAcceleration to maxAcceleration.
-		set burnDuration to velocityError / intendedAcceleration.
-		set intendedThrottle to 1.
-		}
-	else {
-		set intendedAcceleration to maxAcceleration / 10.
-		set burnDuration to velocityError / intendedAcceleration.
-		set intendedThrottle to 0.1.
-		}
-	print "Burn time: " + burnDuration + " at " + intendedThrottle + " throttle.".
-	wait 1.
-	wait until ship:angularvel:mag < 0.001.
-	set throttle to intendedThrottle.
-	wait burnDuration.
-	set throttle to 0.
-	sas off.
-	}
-
 function Deploy {
 	parameter message.
+
+	panels on.
+
 	set engineFound to false.
 	set part to core:part.
-
 	until engineFound {
 		set part to part:parent.
 		for module in part:modules {
 			if module:matchespattern("engine"){
 				set enginePart to part.
 				set engineModule to part:GetModule(module).
+				engineModule:DoAction("activate engine", true).
 				set engineFound to true.
 				}
 			}
 		}
-	engineModule:DoAction("activate engine", true).
-	panels on.
-
-	AdjustOrbit.
-	AdjustOrbit.
+	for part in ship:parts {
+		for moduleName in part:modules {
+			set module to part:getModule(moduleName).
+			if module:HasAction("deploy scanner") {
+				module:DoAction("deploy scanner", true).
+				}
+			if module:HasAction("extend antenna") {
+				module:DoAction("extend antenna", true).
+				}
+			}
+		}
+	set ship:name to core:tag.
 	
 	set myConnection to message:sender:connection.
 	myConnection:SendMessage("deployed").
 	set kUniverse:ActiveVessel to message:sender.
+	}
+
+function AdjustOrbit {
+	set surveyAltitude to max( max(body:radius / 10, 25000), BODY:ATM:HEIGHT) + 1000.
+	set dirty to false.
+	if round(orbit:inclination) <> 90 {
+		print "Setting polar orbit.".
+		AlterInclination(90).
+		set dirty to true.
+		}
+	else if not withinError(orbit:periapsis, surveyAltitude, 0.01) {
+		print "Adjusting periapsis to " + round(surveyAltitude) + "m".
+		AlterPeriapsis(surveyAltitude, orbit, time:seconds).
+		set dirty to true.
+		}
+	else if not withinError(orbit:apoapsis, surveyAltitude, 0.01) {
+		print "Adjusting apoapsis to " + round(surveyAltitude) + "m".
+		AlterApoapsis(surveyAltitude, orbit, time:seconds).
+		set dirty to true.
+		}
+	return dirty.
+	}
+
+function PerformSurvey {
+	print "Performing survey.".
+	set surveyEventName to "Perform Orbital Survey".
+	set scanners to ship:PartsDubbedPattern("SurveyScanner").
+	if scanners:Length = 0 {
+		print " … no scanner found.".
+		return false.
+		}
+	set scanner to scanners[0].
+	set surveyModule to scanner:GetModule("ModuleOrbitalSurveyor").
+	for event in surveyModule:AllEvents {
+		if event:MatchesPattern(surveyEventName) {
+			sas on.
+			wait 1.
+			set sasmode to "RADIALIN".
+			surveyModule:DoEvent(surveyEventName).
+			return true.
+			}
+		}
+	print " … oops.".
+	return false.
 	}
 
 function HandleMessage {
@@ -102,7 +106,7 @@ function HandleMessage {
 		}
 	if thisMessage:content[0] = "deploy" {
 		set kUniverse:ActiveVessel to ship.
-		Deploy(thisMessage).
+		deploy(thisMessage).
 		}
 	if thisMessage:content[0] = "apoapsis" {
 		set kUniverse:ActiveVessel to ship.
@@ -127,6 +131,7 @@ function HandleMessage {
 		}
 	}
 
+print "Initial Boot.".
 until deploymentComplete {
 	wait 10.
 	print "Hello world.".
@@ -137,4 +142,22 @@ until deploymentComplete {
 		}
 	}
 
+set deploymentComplete to false.
+
+print "Establishing Orbit.".
+until deploymentComplete {
+	if hasNode {
+		sas off.
+		run "execute_next_node".
+		sas on.
+		}
+	else if not AdjustOrbit {
+		set deploymentComplete to PerformSurvey.
+		}
+	else {
+		wait 60.
+		}
+	}
+
+print "Survey completed.".
 set core:bootfilename to "".

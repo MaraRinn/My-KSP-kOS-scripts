@@ -2,16 +2,6 @@ parameter numberOfRelays is 4.
 
 runoncepath("orbital_mechanics.ks").
 
-function withinError {
-	parameter a.
-	parameter b.
-	parameter maxRelativeError is 0.005.
-	set error to abs(b-a).
-	set relativeError to error / min(a,b).
-	if relativeError < maxRelativeError { return true. }
-	return false.
-	}
-
 sas on.
 wait 1.
 
@@ -57,18 +47,24 @@ else {
 	if deployPoint < 0 {
 		set deployPoint to deployPoint + orbit:period.
 		}
-	if eta:periapsis < 300 {
-		if (relayCandidates:length > 0 or surveyCandidates:length > 0) {
+	if (relayCandidates:length > 0 ) {
+		if eta:periapsis < 300 {
 			print "Launching relay.".
 			run launch_relay.
+			print " … waiting till we pass periapsis.".
+			wait until eta:periapsis > 300.
 			}
 		else {
-			print "Deployment complete.".
-			set core:bootfilename to "".
+			set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
+			add destinationNode.
 			}
 		}
+	else if (surveyCandidates:length > 0) {
+		print "Launching survey.".
+		run launch_relay.
+		}
 	else {
-		set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
-		add destinationNode.
+		print "Deployment complete.".
+		set core:bootfilename to "".
 		}
 	}

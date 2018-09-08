@@ -8,10 +8,10 @@
 
 set myNode to nextnode.
 set NAVMODE to "Orbit".
-if sas and sasmode = "PROGRADE" {
+if sas and (sasmode = "PROGRADE") {
 	lock burnvector to prograde:vector.
 	}
-else if sas and sasmode = "RETROGRADE" {
+else if sas and (sasmode = "RETROGRADE") {
 	lock burnvector to retrograde:vector.
 	}
 else {
@@ -20,7 +20,7 @@ else {
 lock acceleration to ship:maxthrust / ship:mass.
 lock burnDuration to burnvector:mag / acceleration.
 lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 1). 
-lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.25) or (burnvector:mag < 0.001).
+lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.50) or (burnvector:mag < 0.001).
 
 // Honour Kerbal Alarm Clock
 function KACAlarmWithin {
@@ -52,9 +52,11 @@ function WarpToTime {
 		set interval to destinationTime - time:seconds.
 		// It takes about 1 real second to speed up or slow down warp.
 		from { set i to ratesList:Length - 1. } until (ratesList[i] < (interval)) or (i = 0) step { set i to i - 1.} do { }.
-		set waitTime to interval + time:seconds - ratesList[i].
 		set kUniverse:timeWarp:Warp to i.
-		if KACAlarmWithin(interval) {
+		wait 0.1.
+		set warpInterval to ratesList[kUniverse:timeWarp:Warp].
+		set waitTime to time:seconds + warpInterval - 1.
+		if KACAlarmWithin(warpInterval) {
 			print "Waiting for KAC alarm.".
 			wait until time:seconds > time:seconds + NextKACAlarm:remaining + 5.
 			}
@@ -103,7 +105,7 @@ until done {
 	else {
 		set throttleIntent to burnvector:mag/acceleration.
 		set throttleSetting to min(throttleIntent, 1).
-		if burnvector:mag < 0.05 or sasMode="PROGRADE" or sasMode="RETROGRADE" {
+		if burnvector:mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
 			set done to true.
 			set throttleSetting to 0.
 			}
@@ -114,6 +116,7 @@ until done {
 
 print "Manoeuvre completed.".
 set desiredThrottle to 0.
+SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
 unlock all.
 remove nextnode.
 wait 1.

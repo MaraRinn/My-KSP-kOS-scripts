@@ -56,12 +56,13 @@ function DecoupleSatellite {
 set relayCandidates to ship:partstaggedpattern("Relay \d").
 if relayCandidates:length > 0 {
 	set candidate to relayCandidates[0].
+	LoadProgram(candidate, "relay.ks").
 	}
 else {
 	set surveyCandidates to ship:partstaggedpattern("Survey").
 	set candidate to surveyCandidates[0].
+	LoadProgram(candidate, "survey.ks").
 	}
-LoadProgram(candidate, "relay.ks").
 
 DecoupleSatellite(candidate).
 set newTargets to NewVessels.
