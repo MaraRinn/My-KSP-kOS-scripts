@@ -4,6 +4,13 @@ set queue to ship:messages.
 set Ship:Control:PilotMainThrottle to 0.
 set deploymentComplete to false.
 
+list resources in resList.
+for res in resList {
+	if res:name = "ElectricCharge" {
+		set electric to res.
+		}
+	}
+
 on Abort {
 	set deploymentComplete to true.
 	}
@@ -12,6 +19,7 @@ function Deploy {
 	parameter message.
 
 	panels on.
+	set ship:name to body + " " + core:tag.
 
 	set engineFound to false.
 	set part to core:part.
@@ -38,34 +46,51 @@ function Deploy {
 			}
 		}
 	set ship:name to core:tag.
+	set deploymentComplete to true.
 	
 	set myConnection to message:sender:connection.
 	myConnection:SendMessage("deployed").
-	set kUniverse:ActiveVessel to message:sender.
 	}
 
 function AdjustOrbit {
 	set surveyAltitude to max( max(body:radius / 10, 25000), BODY:ATM:HEIGHT) + 1000.
 	set dirty to false.
+	set maxAcceleration to maxThrust / mass.
+	set dvLimit to maxAcceleration * 120.
 	if round(orbit:inclination) <> 90 {
 		print "Setting polar orbit.".
-		AlterInclination(90).
-		set dirty to true.
+		AlterPlane(90 - orbit:inclination, time:seconds + eta:apoapsis).
+		return true.
 		}
-	else if not withinError(orbit:periapsis, surveyAltitude, 0.01) {
+
+	if not withinError(orbit:periapsis, surveyAltitude, 0.01) {
 		print "Adjusting periapsis to " + round(surveyAltitude) + "m".
-		AlterPeriapsis(surveyAltitude, orbit, time:seconds).
-		set dirty to true.
+		set peNode to AlterPeriapsis(surveyAltitude, orbit, time:seconds, dvLimit).
+		if peNode:deltav:mag < 0.1 {
+			remove NextNode.
+			}
+		else {
+			return true.
+			}
 		}
-	else if not withinError(orbit:apoapsis, surveyAltitude, 0.01) {
+	if not withinError(orbit:apoapsis, surveyAltitude, 0.01) {
 		print "Adjusting apoapsis to " + round(surveyAltitude) + "m".
-		AlterApoapsis(surveyAltitude, orbit, time:seconds).
-		set dirty to true.
+		set apNode to AlterApoapsis(surveyAltitude, orbit, time:seconds, dvLimit).
+		if apNode:deltav:mag < 0.1 {
+			remove NextNode.
+			set adjustAP to false.
+			}
+		else {
+			return true.
+			}
 		}
-	return dirty.
+	return false.
 	}
 
 function PerformSurvey {
+	// Don't try performing a survey in the shade
+	if electric:amount < 500 { return false. }
+
 	print "Performing survey.".
 	set surveyEventName to "Perform Orbital Survey".
 	set scanners to ship:PartsDubbedPattern("SurveyScanner").

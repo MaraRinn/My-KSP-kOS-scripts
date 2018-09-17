@@ -53,7 +53,7 @@ function DecoupleSatellite {
 	return decouplerModule:DoEvent("decouple").
 	}
 
-set relayCandidates to ship:partstaggedpattern("Relay \d").
+set relayCandidates to ship:partstaggedpattern("Relay \d+").
 if relayCandidates:length > 0 {
 	set candidate to relayCandidates[0].
 	LoadProgram(candidate, "relay.ks").

@@ -12,10 +12,21 @@ function desiredVelocity {
 	parameter myOrbit is orbit.
 
 	set intendedPeriod to myOrbit:body:rotationPeriod.
-	set desiredRadius to SemiMajorAxisFromPeriod(intendedPeriod).
-	if desiredRadius > myOrbit:body:SOIRadius {
-		set desiredRadius to desiredRadius / 2.
+	set halfPeriod to intendedPeriod / 2.
+	set thirdPeriod to intendedPeriod / 3.
+	set currentPeriod to PeriodFromSemiMajorAxis(periapsis + body:radius).
+	print "Current:  " + round(currentPeriod).
+	print "Intended: " + round(intendedPeriod).
+	print "Half:     " + round(halfPeriod).
+	print "Third:    " + round(thirdPeriod).
+	if round(currentPeriod / halfPeriod, 1) = 1 {
+		set intendedPeriod to halfPeriod.
 		}
+	else if round(currentPeriod / thirdPeriod, 1) = 1 {
+		set intendedPeriod to thirdPeriod.
+		}
+	
+	set desiredRadius to SemiMajorAxisFromPeriod(intendedPeriod).
 
 	set intendedVelocity to VelocityAtR(altitude + orbit:body:radius, desiredRadius, orbit:body:mu).
 	return intendedVelocity.
@@ -62,6 +73,7 @@ function Deploy {
 	parameter message.
 	set engineFound to false.
 	set part to core:part.
+	set ship:name to body + " " + core:tag.
 
 	until engineFound {
 		set part to part:parent.

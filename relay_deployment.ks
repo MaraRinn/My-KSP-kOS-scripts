@@ -1,27 +1,41 @@
-parameter numberOfRelays is 4.
+parameter numberOfRelays is 3.
 
 runoncepath("orbital_mechanics.ks").
+
+function PrepareOrbit {
+	parameter desiredRelayPeriod is orbit:body:rotationPeriod.
+
+	set desiredRelaySMA to SemiMajorAxisFromPeriod(desiredRelayPeriod).
+	set desiredRelayAltitude to desiredRelaySMA - body:radius.
+	set desiredDeployerSMA to SemiMajorAxisFromPeriod(desiredRelayPeriod * (numberOfRelays + 1)/numberOfRelays).
+	set desiredDeployerApoapsis to 2 * desiredDeployerSMA - desiredRelaySMA - body:radius.
+	set desiredDeployerPeriapsis to desiredRelayAltitude.
+
+	clearscreen.
+	print "Deployment Parameters:".
+	print "Relay Altitude: " + desiredRelayAltitude.
+	print "Deployer Ap:    " + desiredDeployerApoapsis.
+	}
 
 sas on.
 wait 1.
 
 if hasNode {
 	print "Executing manoeuvre.".
+	if sasmode = "MANEUVER" { sas off. }
 	run execute_next_node.
 	}
 
 set relayCandidates to ship:partstaggedpattern("Relay \d").
 set surveyCandidates to ship:partstaggedpattern("Survey").
 
-set desiredRelayPeriod to body:rotationperiod.
-lock desiredRelaySMA to SemiMajorAxisFromPeriod(desiredRelayPeriod).
-if desiredRelaySMA > body:SOIradius {
-	set desiredRelayPeriod to body:rotationperiod / 2.
+PrepareOrbit.
+if desiredDeployerApoapsis > body:soiRadius {
+	PrepareOrbit(orbit:body:rotationPeriod / 2).
 	}
-set desiredRelayAltitude to desiredRelaySMA - body:radius.
-set desiredDeployerSMA to SemiMajorAxisFromPeriod(desiredRelayPeriod * (numberOfRelays + 1)/numberOfRelays).
-set desiredDeployerApoapsis to 2 * desiredDeployerSMA - desiredRelaySMA - body:radius.
-set desiredDeployerPeriapsis to desiredRelaySMA - body:radius.
+if desiredDeployerApoapsis > body:soiRadius {
+	PrepareOrbit(orbit:body:rotationPeriod / 3).
+	}
 
 if not withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
 	print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
@@ -68,3 +82,6 @@ else {
 		set core:bootfilename to "".
 		}
 	}
+
+wait 5.
+reboot.
