@@ -8,6 +8,11 @@ on Abort {
 	set deploymentComplete to true.
 	}
 
+on AG1 {
+	set message to List("deploy").
+	queue:Push(message).
+	}
+
 function desiredVelocity {
 	parameter myOrbit is orbit.
 
