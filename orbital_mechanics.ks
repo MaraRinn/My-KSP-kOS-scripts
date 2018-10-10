@@ -47,6 +47,21 @@ function SpeedFromSemiMajorAxisRadiusMu {
 	return derivedSpeed.
 	}
 
+function ResonantOrbit {
+	parameter peRadius.
+	parameter apRadius.
+	parameter ratioResonant. // Number of resonant orbits
+	parameter ratioBase.     // Number of base orbits
+	// eg: for three satellites in an equilateral triangle, ratio would be 4 resonant to 3 base
+	// this allows the satellite bus to lag by 1/3 an orbit each cycle
+
+	set baseSMA to (peRadius + apRadius)/2.
+	set newSMA to (ratioResonant^2 * baseSMA^3 / ratioBase^2)^(1/3).
+	set newAPRadius to newSMA * 2 - peRadius.
+	// Returns the new apoapsis (radius, not altitude). 
+	return newAPRadius.
+	}
+
 function FuelMassFromDeltaVEndMass {
 	declare parameter DeltaV.
 	declare parameter EndMass.
@@ -258,8 +273,8 @@ function AlterInclination {
 		}
 
 	local nodeTime is time:seconds + timeToNode.
-	local dTheta is (newInclination - orbit:inclination).
-	AlterPlane(dTheta, nodeTime, ship).
+	set newNode to AlterPlane(dTheta, nodeTime, ship).
+	return newNode.
 	}
 
 function AlterPlane {
@@ -278,6 +293,7 @@ function AlterPlane {
 	set Dr to nodeDetails:z.
 	local newNode to Node(nodeTime, Dr, Dn, Dp).
 	add newNode.
+	return newNode.
 	}
 
 function LongitudeFromOrbit {
@@ -394,7 +410,8 @@ function MeanAnomalyFromOrbit {
 	set secondsSinceEpoch to timeOfInterest - orbitOfInterest:epoch.
 	set totalOrbits to secondsSinceEpoch / orbitPeriod.
 	set orbitFraction to totalOrbits - floor(totalOrbits).
-	return orbitFraction * 360 + orbitOfInterest:meanAnomalyAtEpoch.
+	set meanAnomaly to BindAngleTo360(orbitFraction * 360 + orbitOfInterest:meanAnomalyAtEpoch).
+	return meanAnomaly.
 	}
 
 function MeanAnomalyFromPeriodEpochAngleTime {
