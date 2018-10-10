@@ -146,6 +146,7 @@ until deploymentComplete {
 	}
 
 set deploymentComplete to false.
+set KUniverse:ActiveVessel to ship.
 
 print "Establishing Orbit.".
 until deploymentComplete {

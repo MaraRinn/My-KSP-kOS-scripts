@@ -30,10 +30,12 @@ set relayCandidates to ship:partstaggedpattern("Relay \d").
 set surveyCandidates to ship:partstaggedpattern("Survey").
 
 PrepareOrbit.
-if desiredDeployerApoapsis > body:soiRadius {
+if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
+	print "(trying again with half stationary period)".
 	PrepareOrbit(orbit:body:rotationPeriod / 2).
 	}
-if desiredDeployerApoapsis > body:soiRadius {
+if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
+	print "(trying again with one third stationary period)".
 	PrepareOrbit(orbit:body:rotationPeriod / 3).
 	}
 
