@@ -1,6 +1,5 @@
 runoncepath("orbital_mechanics").
 
-set queue to ship:messages.
 set Ship:Control:PilotMainThrottle to 0.
 set deploymentComplete to false.
 
@@ -16,10 +15,8 @@ on Abort {
 	}
 
 function Deploy {
-	parameter message.
-
 	panels on.
-	set ship:name to body + " " + core:tag.
+	set ship:name to body:name + " " + core:tag.
 
 	set engineFound to false.
 	set part to core:part.
@@ -45,11 +42,6 @@ function Deploy {
 				}
 			}
 		}
-	set ship:name to core:tag.
-	set deploymentComplete to true.
-	
-	set myConnection to message:sender:connection.
-	myConnection:SendMessage("deployed").
 	}
 
 function AdjustOrbit {
@@ -113,57 +105,43 @@ function PerformSurvey {
 	return false.
 	}
 
-function HandleMessage {
-	parameter message.
+function Detached {
+	set part to core:part.
+	set decouplerFound to false.
+	until decouplerFound {
+		set part to part:parent.
+		for module in part:modules {
+			if module:matchespattern("decouple"){
+				set decouplerPart to part.
+				set decouplerModule to part:GetModule(module).
+				print "Decoupler found".
+				set decouplerFound to true.
+				}
+			}
+		if not part:HasParent { break. }
+		}
+	return not decouplerFound.
+	}
 
-	if hasNode {
-		set lastNode to AllNodes[AllNodes:Length - 1].
-		set lastOrbit to lastNode:orbit.
-		set noEarlierThan to lastNode:eta + time:seconds.
+function FarEnoughAway {
+	list targets in thingsInSpace.
+	set enoughRoomToDeploy to true.
+	for thing in thingsInSpace {
+		if thing:distance < 20 {
+			print "personal space please!".
+			set enoughRoomToDeploy to false.
+			}
 		}
-	else {
-		set lastOrbit to orbit.
-		set noEarlierThan to time:seconds.
-		}
-
-	if thisMessage:content[0] = "reboot" {
-		reboot.
-		}
-	if thisMessage:content[0] = "deploy" {
-		set kUniverse:ActiveVessel to ship.
-		deploy(thisMessage).
-		}
-	if thisMessage:content[0] = "apoapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredApoapsis to thisMessage:content[1].
-		print "Setting apoapsis to " + desiredApoapsis.
-		AlterApoapsis(desiredApoapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "periapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredPeriapsis to thisMessage:content[1].
-		print "Setting periapsis to " + desiredPeriapsis.
-		AlterPeriapsis(desiredPeriapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "inclination" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredInclination to thisMessage:content[1].
-		print "Setting inclination to " + desiredInclination.
-		AlterInclination(desiredInclination). // FIXME - AlterInclination is fragile on orbits
-		}
-	if thisMessage:content[0] = "goodbye" {
-		set deploymentComplete to true.
-		}
+	return enoughRoomToDeploy.
 	}
 
 print "Initial Boot.".
 until deploymentComplete {
-	wait 10.
+	wait 60.
 	print "Hello world.".
-	if not queue:empty {
-		set thisMessage to queue:pop().
-		print "Ooh! A message! It says '" + thisMessage:content[0] + "'".
-		HandleMessage(thisMessage).
+	if Detached and FarEnoughAway {
+		Deploy.
+		set deploymentComplete to true.
 		}
 	}
 

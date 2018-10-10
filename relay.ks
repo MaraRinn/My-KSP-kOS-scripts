@@ -70,10 +70,9 @@ function AdjustOrbit {
 	}
 
 function Deploy {
-	parameter message.
 	set engineFound to false.
 	set part to core:part.
-	set ship:name to body + " " + core:tag.
+	set ship:name to body:name + " " + core:tag.
 
 	until engineFound {
 		set part to part:parent.
@@ -90,10 +89,6 @@ function Deploy {
 
 	AdjustOrbit.
 	AdjustOrbit.
-	
-	set myConnection to message:sender:connection.
-	myConnection:SendMessage("deployed").
-	set kUniverse:ActiveVessel to message:sender.
 	}
 
 function HandleMessage {
@@ -114,7 +109,13 @@ function HandleMessage {
 		}
 	if thisMessage:content[0] = "deploy" {
 		set kUniverse:ActiveVessel to ship.
-		Deploy(thisMessage).
+		Deploy.
+	
+		if message:HasSender {
+			set myConnection to message:sender:connection.
+			myConnection:SendMessage("deployed").
+			set kUniverse:ActiveVessel to message:sender.
+			}
 		}
 	if thisMessage:content[0] = "apoapsis" {
 		set kUniverse:ActiveVessel to ship.

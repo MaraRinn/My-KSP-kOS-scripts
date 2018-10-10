@@ -40,21 +40,38 @@ if desiredDeployerApoapsis > body:soiRadius {
 if not withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
 	print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
 	AlterApoapsis(desiredDeployerApoapsis).
-	set sasmode to "MANEUVER".
+	if NextNode:deltav:mag > 0.1 {
+		set sasmode to "MANEUVER".
+		}
+	else {
+		remove NextNode.
+		}
 	}
-else if withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
-	print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
-	AlterPeriapsis(desiredDeployerPeriapsis).
-	set sasmode to "MANEUVER".
-	}
-else if withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
+
+if not HasNode and withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
 	print "Fiddling with the orbit a bit.".
 	AlterPeriapsis(desiredDeployerApoapsis).
-	set sasmode to "MANEUVER".
+	if NextNode:deltav:mag > 0.1 {
+		set sasmode to "MANEUVER".
+		}
+	else {
+		remove NextNode.
+		}
+	}
+
+if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
+	print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
+	AlterPeriapsis(desiredDeployerPeriapsis).
+	if NextNode:deltav:mag > 0.1 {
+		set sasmode to "MANEUVER".
+		}
+	else {
+		remove NextNode.
+		}
 	}
 
 // At this point the deployer is on the appropriate orbit.
-else {
+if not HasNode {
 	print "Orbit looks good.".
 	set sasmode to "RETROGRADE".
 	set deployPoint to eta:periapsis - 300.
@@ -65,13 +82,9 @@ else {
 		if eta:periapsis < 300 {
 			print "Launching relay.".
 			run launch_relay.
-			print " … waiting till we pass periapsis.".
-			wait until eta:periapsis > 300.
 			}
-		else {
-			set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
-			add destinationNode.
-			}
+		set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
+		add destinationNode.
 		}
 	else if (surveyCandidates:length > 0) {
 		print "Launching survey.".
