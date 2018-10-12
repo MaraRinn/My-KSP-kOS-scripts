@@ -1,3 +1,13 @@
+function withinError {
+	parameter a.
+	parameter b.
+	parameter maxRelativeError is 0.005.
+	set error to abs(b-a).
+	set relativeError to error / min(a,b).
+	if relativeError < maxRelativeError { return true. }
+	return false.
+	}
+
 function VelocityAtR {
 	declare parameter r.
 	declare parameter semiMajorAxis.
@@ -168,18 +178,22 @@ function AlterApoapsis {
 	parameter newApoapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
-	parameter maximumBurnTime is 0.
+	parameter dvLimit is 0.
 
-	set oldPeriapsisRadius to Orbit:Periapsis + Orbit:Body:Radius.
-	set oldSemiMajorAxis to Orbit:SemiMajorAxis.
-	set oldOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, oldSemiMajorAxis, Orbit:Body:Mu).
+	set oldPeriapsisRadius to myOrbit:Periapsis + myOrbit:Body:Radius.
+	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
+	set oldOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, oldSemiMajorAxis, myOrbit:Body:Mu).
 
-	set newSemiMajorAxis to (Orbit:Periapsis + newApoapsis)/2 + Orbit:Body:Radius.
-	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, Orbit:Body:Mu).
+	set newSemiMajorAxis to (myOrbit:Periapsis + newApoapsis)/2 + myOrbit:Body:Radius.
+	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
-	if myOrbit = Orbit {
-		set timeToPeriapsis to ETA:Periapsis.
+	if dvLimit > 0 and deltaV > dvLimit {
+		set deltaV to dvLimit.
+		}
+
+	if myOrbit:apoapsis < 0 {
+		set timeToPeriapsis to eta:periapsis.
 		}
 	else {
 		set angleToPeriapsis to 360 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
@@ -188,6 +202,7 @@ function AlterApoapsis {
 			}
 		set timeToPeriapsis to angleToPeriapsis * (myOrbit:Period / 360).
 		}
+
 	set nodeTime to timeToPeriapsis + timeOfInterest.
 	set newNode to node(nodeTime, 0, 0, deltaV).
 	add newNode.
@@ -198,6 +213,7 @@ function AlterPeriapsis {
 	parameter newPeriapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
+	parameter dvLimit is 0.
 
 	set oldApoapsisRadius to myOrbit:Apoapsis + myOrbit:Body:Radius.
 	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
@@ -207,6 +223,10 @@ function AlterPeriapsis {
 	set newOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtApoapsis - oldOrbitSpeedAtApoapsis.
+	if dvLimit > 0 and deltaV > dvLimit {
+		set deltaV to dvLimit.
+		}
+
 	set angleToApoapsis to 180 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 	if angleToApoapsis < 0 {
 		set angleToApoapsis to angleToApoapsis + 360.
@@ -244,18 +264,20 @@ function AlterSMA {
 function AlterInclination {
 	parameter newInclination.
 	parameter atHighestNode is true. // highest ¬nearest
+	parameter myOrbit is ship:orbit.
 
-	local taan is TrueAnomalyOfAscendingNode().
-	local tadn is TrueAnomalyOfDescendingNode().
+	local taan is TrueAnomalyOfAscendingNode(myOrbit).
+	local tadn is TrueAnomalyOfDescendingNode(myOrbit).
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
 
+	set dTheta to newInclination - myOrbit:inclination.
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -265,7 +287,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -318,8 +340,8 @@ function MeanAnomalyOfAscendingNode {
 	declare parameter myOrbit is orbit.
 	
 	set taan to TrueAnomalyOfAscendingNode(myOrbit).
-	set eaan to EccentricAnomalyFromTrueAnomaly(taan, orbit:eccentricity).
-	set maan to MeanAnomalyFromEccentricAnomaly(eaan, orbit:eccentricity).
+	set eaan to EccentricAnomalyFromTrueAnomaly(taan, myOrbit:eccentricity).
+	set maan to MeanAnomalyFromEccentricAnomaly(eaan, myOrbit:eccentricity).
 	return maan.
 	}
 
@@ -345,8 +367,8 @@ function MeanAnomalyOfDescendingNode {
 	declare parameter myOrbit is orbit.
 
 	set tadn to TrueAnomalyOfDescendingNode(myOrbit).
-	set eadn to EccentricAnomalyFromTrueAnomaly(tadn, orbit:eccentricity).
-	set madn to MeanAnomalyFromEccentricAnomaly(eadn, orbit:eccentricity).
+	set eadn to EccentricAnomalyFromTrueAnomaly(tadn, myOrbit:eccentricity).
+	set madn to MeanAnomalyFromEccentricAnomaly(eadn, myOrbit:eccentricity).
 	return madn.
 	}
 

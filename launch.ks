@@ -49,6 +49,7 @@ until runmode = "finished" {
 
 	else if runmode = "leaving launch site" {
 		lock steering to heading(90,88).
+		set throttle_position to 1.
 		if maxthrust = 0 { // Don't stage if engines are already active
 			until maxthrust > 0 {
 				print "ATTEMPTING TO START ENGINES       " at (0,3).
@@ -63,37 +64,35 @@ until runmode = "finished" {
 		if ship:velocity:surface:mag > (10 * localG) set runmode to "clearing launch area".
 		}
 
-	else if runmode = "clearing launch area" and turn_altitude >= 1 {
-		lock steering to heading(90, 80).
+	else if runmode = "clearing launch area" and atmosphere_altitude >= 1 {
+		lock steering to heading(90, 70).
 		set acceleration_cap to max_acceleration_cap.
 		if ship:velocity:surface:mag > (30 * localG) {
-			unlock steering.
 			set runmode to "gravity turn".
 			}
 		}
-	else if runmode = "clearing launch area" and turn_altitude < 1 {
+	else if runmode = "clearing launch area" and atmosphere_altitude < 1 {
 		if apoapsis > terrain_height() set runmode to "build orbital velocity".
 		}
 	else if runmode = "gravity turn" and ship:altitude < turn_altitude {
-		if sas {
-			set sasmode to "PROGRADE".
-			}
-		else {
+		if not sas {
 			unlock steering.
 			sas on.
+			wait 0.1.
+			set sasmode to "PROGRADE".
 			}
 		}
 	else if runmode = "gravity turn" and ship:altitude >= turn_altitude {
 		set runmode to "build orbital velocity".
-		sas off.
 		}
 
 	else if runmode = "build orbital velocity" {
+		sas off.
 		lock steering to heading(90,0).
 		if defined launch_delay_full_throttle and launch_delay_full_throttle {
 			set angle_from_up to vectorangle(up:vector, facing:vector).
 			if angle_from_up < 80 or angle_from_up > 90 {
-				set acceleration_cap to localG * 5.
+				set acceleration_cap to min(localG * 5, max_acceleration_cap).
 				}
 			else {
 				set acceleration_cap to max_acceleration_cap.
@@ -152,11 +151,12 @@ until runmode = "finished" {
 	print "Throttle Intent: " + round(throttle_intent,2) + "        " at (0,5).
 	print "Throttle Cap:    " + round(throttle_cap,2) + "     " at (0,6).
 	print round(speed_portion,2) + "     " at (0,7).
-	print round(apoapsis_error,2) + "     " at (0,8).
-	print round(vectorangle(up:vector, facing:vector),2) + "      " at (0,9).
+	print "Altitude:        " + round(altitude) + "       " at (0,8).
+	print "Apoapsis:        " + round(apoapsis) + "       " at (0,9).
+	print "Apoapsis error:  " + round(apoapsis_error,2) + "     " at (0,10).
+	print round(vectorangle(up:vector, facing:vector),2) + "      " at (0,11).
 
-	if altitude > atmosphere_altitude and (orbit_altitude - apoapsis) < 10 {
-		set throttle_position to 0.
+	if (abs(orbit_altitude - apoapsis) < 10 or apoapsis > orbit_altitude) and (altitude > atmosphere_altitude) {
 		set runmode to "finished".
 		}
 

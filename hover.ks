@@ -8,7 +8,7 @@ set FLEVEL to STAGE:LIQUIDFUEL.
 set runmode to 1.
 set cancelHorizontal to false.
 sas off.
-set steeringVec to up.
+set steeringVec to up:vector.
 lock steering to steeringVec.
 
 if defined zeroAltitude {
@@ -28,8 +28,11 @@ set altitude_pid:setpoint to desired_altitude.
 set desired_velocity_vertical to altitude_pid:update(time:seconds, groundDistance + ship:verticalSpeed).
 
 // Black Magic
-set Ku to 1.2.
+set Ku to 1.
+set Tu to 0.25.
 set Kp to 0.6 * Ku.
+set Ki to 2 * Kp / Tu.
+set Kd to Kp * Tu / 8.
 set velocity_pid to PIDLoop(Kp, 0, 0, 0, 1).
 set velocity_pid:setpoint to desired_velocity_vertical.
 set my_throttle to velocity_pid:update(time:seconds, ship:verticalSpeed).
@@ -67,7 +70,7 @@ function RefreshDisplay {
 
 set throttleSettings to List().
 
-until runmode = 0 {	
+until runmode = 0 {
 	IF RUNMODE = 1 {
 		set altitude_pid:maxoutput to maxVerticalSpeed.
 		set altitude_pid:minoutput to minVerticalSpeed.
@@ -76,6 +79,11 @@ until runmode = 0 {
 		set velocity_pid:setPoint to desired_velocity_vertical.
 		set my_throttle to velocity_pid:UPDATE( time:seconds, ship:verticalSpeed ).
 		wait 0.1.
+		
+		if stage:liquidfuel < 0.5*FLEVEL {
+			set runmode to 2.
+			gear on.
+			}	
 		}
 	
 	IF RUNMODE = 2 {
@@ -87,10 +95,6 @@ until runmode = 0 {
 		set my_throttle to velocity_pid:Update( time:seconds, ship:verticalSpeed).
 		wait 0.1.
 		}
-		
-	if stage:liquidfuel < 0.5*FLEVEL{
-		set runmode to 2.
-		}	
 	}
 
 set my_throttle to 0.
