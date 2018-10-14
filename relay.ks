@@ -1,13 +1,55 @@
 runoncepath("orbital_mechanics").
 
-set queue to ship:messages.
+sas on.
 set Ship:Control:PilotMainThrottle to 0.
-set deploymentComplete to false.
+wait 1.
+
+function HasDecoupler {
+	set part to core:part.
+	set decouplerFound to false.
+	until decouplerFound {
+		set part to part:parent.
+		for module in part:modules {
+			if module:matchespattern("decouple"){
+				set decouplerFound to true.
+				}
+			}
+		if not part:HasParent { break. }
+		}
+	return decouplerFound.
+	}
+
+function desiredAltitude {
+	parameter purpose is "Relay".
+	
+	if purpose = "Relay" {
+		set altitudeIntent to SemiMajorAxisFromPeriod(orbit:body:rotationperiod).
+		if altitudeIntent > orbit:body:soiradius {
+			set altitudeIntent to SemiMajorAxisFromPeriod(orbit:body:rotationperiod/2).
+			}
+		}
+	else if purpose = "Survey" {
+		// https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner
+		set altitudeIntent to max(max(orbit:body:radius / 10, 25), orbit:body:atm:height).
+		}
+	return altitudeIntent.
+	}
+
+function NearestVessel {
+	list targets in myTargets.
+	set closest to myTargets[0].
+	for candidate in myTargets {
+		if candidate:distance < closest:distance {
+			set closest to candidate.
+			}
+		}
+	return closest.
+	}
 
 function deploy {
-	parameter message.
 	set engineFound to false.
 	set part to core:part.
+	set kUniverse:ActiveVessel to ship.
 
 	until engineFound {
 		set part to part:parent.
@@ -23,11 +65,15 @@ function deploy {
 	engineModule:DoAction("activate engine", true).
 	panels on.
 
-	if core:tag:contains("Relay") { create_circularise_node(false). }
+	if core:tag:contains("Relay") {
+		set lastNode to create_circularise_node(false).
+		set lastNode to AlterPeriapsis(desiredAltitude("Relay"), lastNode:orbit, time:seconds + lastNode:ETA).
+		set lastNode to AlterApoapsis(desiredAltitude("Relay"), lastNode:orbit, time:seconds + lastNode:ETA).
+		}
 	if core:tag:contains("Survey") {
 		set lastNode to AlterInclination(90).
-		set lastNode to AlterPeriapsis(message:content[1], lastNode:orbit, time:seconds + lastNode:ETA).
-		set lastNode to AlterApoapsis(message:content[1], lastNode:orbit, time:seconds + lastNode:ETA).
+		set lastNode to AlterPeriapsis(desiredAltitude("Survey"), lastNode:orbit, time:seconds + lastNode:ETA).
+		set lastNode to AlterApoapsis(desiredAltitude("Survey"), lastNode:orbit, time:seconds + lastNode:ETA).
 		for part in ship:parts {
 			for moduleName in part:modules {
 				set module to part:getModule(moduleName).
@@ -40,65 +86,27 @@ function deploy {
 				}
 			}
 		}
-	sas on.
-	wait 1.
-	set sasmode to "MANEUVER".
 	set ship:name to core:tag.
-	wait 1. // Give time for KAC to pick up this node.
-	runpath("execute_next_node").
-	set myConnection to message:sender:connection.
-	myConnection:SendMessage("deployed").
 	}
 
-function handleMessage {
-	parameter message.
-
-	if hasNode {
-		set lastNode to AllNodes[AllNodes:Length - 1].
-		set lastOrbit to lastNode:orbit.
-		set noEarlierThan to lastNode:eta + time:seconds.
-		}
-	else {
-		set lastOrbit to orbit.
-		set noEarlierThan to time:seconds.
-		}
-
-	if thisMessage:content[0] = "reboot" {
-		reboot.
-		}
-	if thisMessage:content[0] = "deploy" {
-		set kUniverse:ActiveVessel to ship.
-		deploy(thisMessage).
-		}
-	if thisMessage:content[0] = "apoapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredApoapsis to thisMessage:content[1].
-		print "Setting apoapsis to " + desiredApoapsis.
-		AlterApoapsis(desiredApoapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "periapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredPeriapsis to thisMessage:content[1].
-		print "Setting periapsis to " + desiredPeriapsis.
-		AlterPeriapsis(desiredPeriapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "inclination" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredInclination to thisMessage:content[1].
-		print "Setting inclination to " + desiredInclination.
-		AlterInclination(desiredInclination). // FIXME - AlterInclination is fragile on orbits
-		}
-	if thisMessage:content[0] = "goodbye" {
-		set deploymentComplete to true.
-		}
+if HasDecoupler {
+	print "Waiting for decoupling.".
+	wait 30.
+	reboot.
 	}
 
-until deploymentComplete {
-	wait 10.
-	print "Hello world.".
-	if not queue:empty {
-		set thisMessage to queue:pop().
-		print "Ooh! A message! It says '" + thisMessage:content[0] + "'".
-		handleMessage(thisMessage).
-		}
+print "Clear of launch vehicle?".
+wait until NearestVessel:distance > 20.
+set kUniverse:timeWarp:Warp to 0.
+wait until kUniverse:timeWarp:IsSettled.
+
+print "Equipment deployed?".
+if (not panels) {
+	deploy.
+	}
+
+print "Circularise!".
+if hasNode {
+	set sasmode to "MANEUVER".
+	run execute_next_node.
 	}

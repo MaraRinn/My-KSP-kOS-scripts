@@ -162,6 +162,7 @@ function create_circularise_node {
 
 	set circularisation to node(nodeTime,dR, dN, dP).
 	add circularisation.
+	return circularisation.
 }
 
 function AlterApoapsis {
@@ -170,12 +171,12 @@ function AlterApoapsis {
 	parameter timeOfInterest is time:seconds.
 	parameter maximumBurnTime is 0.
 
-	set oldPeriapsisRadius to Orbit:Periapsis + Orbit:Body:Radius.
-	set oldSemiMajorAxis to Orbit:SemiMajorAxis.
-	set oldOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, oldSemiMajorAxis, Orbit:Body:Mu).
+	set oldPeriapsisRadius to myOrbit:Periapsis + myOrbit:Body:Radius.
+	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
+	set oldOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, oldSemiMajorAxis, myOrbit:Body:Mu).
 
-	set newSemiMajorAxis to (Orbit:Periapsis + newApoapsis)/2 + Orbit:Body:Radius.
-	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, Orbit:Body:Mu).
+	set newSemiMajorAxis to (myOrbit:Periapsis + newApoapsis)/2 + myOrbit:Body:Radius.
+	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
 	if myOrbit = Orbit {
@@ -250,12 +251,13 @@ function AlterInclination {
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
+	set dTheta to newInclination - orbit:Inclination.
 
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -265,7 +267,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dTheta to -dTheta.
 			}
 		else {
 			set timeToNode to ttan.

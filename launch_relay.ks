@@ -4,18 +4,6 @@
 //
 // Deployment occurs in sequence, with one satellite deployed at each periapsis of the resonant orbit.
 parameter altitude is orbit:periapsis.
-set relayDeployed to false.
-
-function NewVessels {
-	set myTargets to List().
-	set newTargets to List().
-	list targets in myTargets.
-	for thisThing in myTargets {
-		if thisThing:distance < 200 {
-			newTargets:add(thisThing).}
-		}
-	return newTargets.
-	}
 
 function LoadProgram {
 	parameter kOSPart.
@@ -64,27 +52,3 @@ else {
 LoadProgram(candidate, "relay.ks").
 
 DecoupleSatellite(candidate).
-set newTargets to NewVessels.
-set newSatellite to newTargets[0].
-
-set myConnection to newSatellite:connection.
-wait until newSatellite:distance > 20.
-set kuniverse:timewarp:rate to 1.
-print "Sending reboot command.".
-set message to List("reboot").
-myConnection:SendMessage(message).
-wait 10.
-print "Sending deploy command.".
-set message to List("deploy", 200000).
-myConnection:SendMessage(message).
-
-until relayDeployed {
-	wait until not ship:messages:empty.
-	set thisMessage to ship:messages:pop.
-	if thisMessage:content = "deployed" { set relayDeployed to true. }
-	}
-set message to List("goodbye").
-myConnection:SendMessage(message).
-
-set kUniverse:ActiveVessel to ship.
-wait 0.1.
