@@ -60,6 +60,8 @@ else {
 set steeringVec to desiredAcceleration.
 set my_throttle to desiredAcceleration:mag / maxAcceleration.
 
+gear off.
+
 on GEAR {
 	preserve.
 	if gear {
@@ -101,6 +103,7 @@ function RefreshDisplay {
 	print "Vertical:   " + round(ship:verticalSpeed,1) + " (" + round(desired_velocity_vertical,1) + ")    ".
 	print "Horizontal: " + round(horizontalVelocity:mag,1).
 	print "HZ Acc:     " + round(desiredHorizontalAcceleration:mag, 1).
+	print "HZ avail:   " + round(availableHorizontalAcceleration:mag, 1).
 	print "Cancel: " + cancelHorizontal.
 	}
 
@@ -108,17 +111,21 @@ until runmode = RUNMODE_END {
 	IF RUNMODE = RUNMODE_HOVER {
 		set altitude_pid:maxoutput to maxVerticalSpeed.
 		set altitude_pid:minoutput to minVerticalSpeed.
-		RefreshDisplay("HOVERING").
 		set desired_velocity_vertical to altitude_pid:Update( time:seconds, groundDistance ).
 		set velocity_pid:setPoint to desired_velocity_vertical.
 		set desiredHorizontalAcceleration to (horizontalVelocity / -3).
 		set desiredVerticalAcceleration to max(velocity_pid:update( time:seconds, ship:verticalSpeed ),0) * up:vector.
 
+		set verticalAngle to VectorAngle(ship:facing:vector, up:vector).
+		set availableHorizontalAcceleration to desiredVerticalAcceleration * tan(verticalAngle).
+
 		if cancelHorizontal {
 			set desiredAcceleration to desiredVerticalAcceleration + desiredHorizontalAcceleration.
+			set availableAcceleration to desiredVerticalAcceleration + availableHorizontalAcceleration.
 			}
 		else {
 			set desiredAcceleration to desiredVerticalAcceleration.
+			set availableAcceleration to desiredVerticalAcceleration.
 			}
 
 		if desiredAcceleration:mag > 0.1 {
@@ -128,7 +135,8 @@ until runmode = RUNMODE_END {
 			set desiredHeading to up:vector.
 			}
 		set steeringVec to desiredHeading.
-		set my_throttle to desiredAcceleration:mag / maxAcceleration.
+		set my_throttle to availableAcceleration:mag / maxAcceleration.
+		RefreshDisplay("HOVERING").
 
 		if stage:liquidfuel < 0.5*FLEVEL {
 			set runmode to RUNMODE_DESCEND.
