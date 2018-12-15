@@ -10,3 +10,16 @@ function TimeString {
 	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
 	}
 
+function terrainHeight {
+	if body = minmus {
+		return 5800.
+		}
+	else if body = ike {
+		return 12800.
+		}
+	else if body = mun {
+		return 7100.
+		}
+	return 0.
+	}
+
