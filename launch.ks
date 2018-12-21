@@ -1,11 +1,14 @@
-//hellolaunch
 // Launch a rocket into the desired orbit, and circularise at apoapsis.
+runoncepath("orbital_mechanics").
 
 DECLARE PARAMETER orbit_altitude IS 120000.
 
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0. // Stop throttle resetting to 50%
 set atmosphere_altitude to BODY:ATM:HEIGHT.
 set turn_altitude to atmosphere_altitude * 2 / 3. // FIXME: need to fix gravity turns
+if atmosphere_altitude < 1 {
+	set turn_altitude to terrain_height().
+	}
 set max_acceleration_cap to 30.
 set acceleration_cap to max_acceleration_cap. // m/s^2
 set runmode to "where are we?".
@@ -64,15 +67,15 @@ until runmode = "finished" {
 		if ship:velocity:surface:mag > (10 * localG) set runmode to "clearing launch area".
 		}
 
-	else if runmode = "clearing launch area" and atmosphere_altitude >= 1 {
+	else if runmode = "clearing launch area" {
 		lock steering to heading(90, 70).
 		set acceleration_cap to max_acceleration_cap.
-		if ship:velocity:surface:mag > (30 * localG) {
+		if apoapsis > turn_altitude and altitude > atmosphere_altitude {
+			set runmode to "build orbital velocity".
+			}
+		else if ship:velocity:surface:mag > (30 * localG) and altitude < atmosphere_altitude {
 			set runmode to "gravity turn".
 			}
-		}
-	else if runmode = "clearing launch area" and atmosphere_altitude < 1 {
-		if apoapsis > terrain_height() set runmode to "build orbital velocity".
 		}
 	else if runmode = "gravity turn" and ship:altitude < turn_altitude {
 		if not sas {
@@ -82,7 +85,7 @@ until runmode = "finished" {
 			set sasmode to "PROGRADE".
 			}
 		}
-	else if runmode = "gravity turn" and ship:altitude >= turn_altitude {
+	else if runmode = "gravity turn" and (apoapsis >= turn_altitude or ship:altitude > atmosphere_altitude) {
 		set runmode to "build orbital velocity".
 		}
 
@@ -190,4 +193,7 @@ until maxthrust > 0 {
 	}
 wait 1.
 
-run "circularise".
+create_circularise_node(true).
+sas off.
+rcs on.
+runpath("execute_next_node").
