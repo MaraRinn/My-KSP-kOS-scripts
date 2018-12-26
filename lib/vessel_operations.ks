@@ -199,7 +199,9 @@ function WaitForAlarm {
 	print "Waiting for alarm in " + round(soonest:remaining) + " seconds.".
 	set warpEndTime to time:seconds + soonest:remaining.
 	WarpToTime(warpEndTime).
-	DeleteAlarm(soonest:id).
+	if (soonest:type <> "Maneuver") and (soonest:type <> "ManeuverAuto") {
+		DeleteAlarm(soonest:id).
+		}
 	}
 
 function WaitForNode {
