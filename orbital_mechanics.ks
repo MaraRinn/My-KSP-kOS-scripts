@@ -168,7 +168,7 @@ function AlterApoapsis {
 	parameter newApoapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
-	parameter maximumBurnTime is 0.
+	parameter maxdv is 0.
 
 	set oldPeriapsisRadius to Orbit:Periapsis + Orbit:Body:Radius.
 	set oldSemiMajorAxis to Orbit:SemiMajorAxis.
@@ -178,6 +178,9 @@ function AlterApoapsis {
 	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, Orbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
+		}
 	if myOrbit = Orbit {
 		set timeToPeriapsis to ETA:Periapsis.
 		}
@@ -198,6 +201,7 @@ function AlterPeriapsis {
 	parameter newPeriapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
+	parameter maxdv is 0.
 
 	set oldApoapsisRadius to myOrbit:Apoapsis + myOrbit:Body:Radius.
 	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
@@ -207,6 +211,9 @@ function AlterPeriapsis {
 	set newOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtApoapsis - oldOrbitSpeedAtApoapsis.
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
+		}
 	set angleToApoapsis to 180 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 	if angleToApoapsis < 0 {
 		set angleToApoapsis to angleToApoapsis + 360.

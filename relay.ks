@@ -1,29 +1,15 @@
 runoncepath("orbital_mechanics").
-
-set queue to ship:messages.
-set Ship:Control:PilotMainThrottle to 0.
-set deploymentComplete to false.
-
-on Abort {
-	set deploymentComplete to true.
-	}
-
-on AG1 {
-	set message to List("deploy").
-	queue:Push(message).
-	}
+set throttleSetting to 0.
+lock throttle to throttleSetting.
 
 function desiredVelocity {
 	parameter myOrbit is orbit.
+	parameter myAltitude is altitude.
 
 	set intendedPeriod to myOrbit:body:rotationPeriod.
 	set halfPeriod to intendedPeriod / 2.
 	set thirdPeriod to intendedPeriod / 3.
-	set currentPeriod to PeriodFromSemiMajorAxis(periapsis + body:radius).
-	print "Current:  " + round(currentPeriod).
-	print "Intended: " + round(intendedPeriod).
-	print "Half:     " + round(halfPeriod).
-	print "Third:    " + round(thirdPeriod).
+	set currentPeriod to myOrbit:Period.
 	if round(currentPeriod / halfPeriod, 1) = 1 {
 		set intendedPeriod to halfPeriod.
 		}
@@ -31,54 +17,53 @@ function desiredVelocity {
 		set intendedPeriod to thirdPeriod.
 		}
 	
-	set desiredRadius to SemiMajorAxisFromPeriod(intendedPeriod).
+	set desiredSMA to SemiMajorAxisFromPeriod(intendedPeriod).
 
-	set intendedVelocity to VelocityAtR(altitude + orbit:body:radius, desiredRadius, orbit:body:mu).
+	set intendedVelocity to VelocityAtR(myAltitude + myOrbit:body:radius, desiredSMA, myOrbit:body:mu).
 	return intendedVelocity.
 	}
 
-function AdjustOrbit {
+function AdjustRelayOrbit {
 	sas on.
-	wait 0.1.
+	wait 1.
 	
-	set intendedVelocity to desiredVelocity.
-	print "Intended: " + round(intendedVelocity,3) + "m/s Actual: " + round(velocity:orbit:mag,3) + "m/s".
-	set velocityError to intendedVelocity - velocity:orbit:mag.
+	set intendedVelocityVector to desiredVelocity * prograde:vector:normalized.
+	print "Intended: " + round(intendedVelocityVector:mag,3) + "m/s Actual: " + round(velocity:orbit:mag,3) + "m/s".
+	set velocityErrorVector to intendedVelocityVector - velocity:orbit.
+	set velocityError to velocityErrorVector * prograde:vector.
 
-	if (velocityError > 0) { set sasmode to "PROGRADE". }
-	if (velocityError < 0) { set sasmode to "RETROGRADE". }
+	if velocityError > 0 { set sasmode to "PROGRADE". }
+	if velocityError < 0 { set sasmode to "RETROGRADE". }
 	if (abs(velocityError) < 0.001) {
 		set deploymentComplete to true.
-		return.
+		return true.
 		}
 
-	set velocityError to abs(velocityError).
+	set deltav to abs(velocityError).
 	print "Adjusting velocity by about " + round(velocityError,3) + "m/s".
 	set maxAcceleration to maxThrust / mass.
-	if velocityError > maxAcceleration {
+	if deltav > maxAcceleration {
 		set intendedAcceleration to maxAcceleration.
-		set burnDuration to velocityError / intendedAcceleration.
+		set burnDuration to deltav / intendedAcceleration.
 		set intendedThrottle to 1.
 		}
 	else {
 		set intendedAcceleration to maxAcceleration / 10.
-		set burnDuration to velocityError / intendedAcceleration.
+		set burnDuration to deltav / intendedAcceleration.
 		set intendedThrottle to 0.1.
 		}
 	print "Burn time: " + burnDuration + " at " + intendedThrottle + " throttle.".
 	wait 1.
 	wait until ship:angularvel:mag < 0.001.
-	set throttle to intendedThrottle.
+	set throttleSetting to intendedThrottle.
 	wait burnDuration.
-	set throttle to 0.
-	sas off.
+	set throttleSetting to 0.
+	return false.
 	}
 
-function Deploy {
-	set engineFound to false.
+function ActivateEngine {
 	set part to core:part.
-	set ship:name to body:name + " " + core:tag.
-
+	set engineFound to false.
 	until engineFound {
 		set part to part:parent.
 		for module in part:modules {
@@ -90,69 +75,81 @@ function Deploy {
 			}
 		}
 	engineModule:DoAction("activate engine", true).
-	panels on.
-
-	AdjustOrbit.
-	AdjustOrbit.
 	}
 
-function HandleMessage {
-	parameter message.
+function Deploy {
+	set part to core:part.
+	set kUniverse:ActiveVessel to ship.
+	set kUniverse:timeWarp:Warp to 0.
+	set ship:name to body:name + " " + core:tag.
+	panels on.
+	}
 
-	if hasNode {
-		set lastNode to AllNodes[AllNodes:Length - 1].
-		set lastOrbit to lastNode:orbit.
-		set noEarlierThan to lastNode:eta + time:seconds.
+function HasDecoupler {
+	set part to core:part.
+	set decouplerFound to false.
+	until decouplerFound {
+		set part to part:parent.
+		for module in part:modules {
+			if module:matchespattern("decouple") {
+				set decouplerFound to true.
+				}
+			}
+		if not part:HasParent { break. }
 		}
-	else {
-		set lastOrbit to orbit.
-		set noEarlierThan to time:seconds.
-		}
+	return decouplerFound.
+	}
 
-	if thisMessage:content[0] = "reboot" {
-		reboot.
-		}
-	if thisMessage:content[0] = "deploy" {
-		set kUniverse:ActiveVessel to ship.
-		Deploy.
-	
-		if message:HasSender {
-			set myConnection to message:sender:connection.
-			myConnection:SendMessage("deployed").
-			set kUniverse:ActiveVessel to message:sender.
+function FarEnoughAway {
+	list targets in thingsInSpace.
+	set enoughRoomToDeploy to true.
+	for thing in thingsInSpace {
+		if thing:distance < 20 {
+			set enoughRoomToDeploy to false.
 			}
 		}
-	if thisMessage:content[0] = "apoapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredApoapsis to thisMessage:content[1].
-		print "Setting apoapsis to " + desiredApoapsis.
-		AlterApoapsis(desiredApoapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "periapsis" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredPeriapsis to thisMessage:content[1].
-		print "Setting periapsis to " + desiredPeriapsis.
-		AlterPeriapsis(desiredPeriapsis, lastOrbit, noEarlierThan).
-		}
-	if thisMessage:content[0] = "inclination" {
-		set kUniverse:ActiveVessel to ship.
-		set desiredInclination to thisMessage:content[1].
-		print "Setting inclination to " + desiredInclination.
-		AlterInclination(desiredInclination). // FIXME - AlterInclination is fragile on orbits
-		}
-	if thisMessage:content[0] = "goodbye" {
-		set deploymentComplete to true.
-		}
+	return enoughRoomToDeploy.
 	}
 
-until deploymentComplete {
-	wait 10.
-	print "Hello world.".
-	if not queue:empty {
-		set thisMessage to queue:pop().
-		print "Ooh! A message! It says '" + thisMessage:content[0] + "'".
-		HandleMessage(thisMessage).
+function ClosestVessel {
+	list targets in thingsInSpace.
+	set closest to thingsInSpace[0].
+	for thing in thingsInSpace {
+		if thing:distance < closest:distance {
+			set closest to thing.
+			}
 		}
+	return closest.
 	}
 
-set core:bootfilename to "".
+set Ship:Control:PilotMainThrottle to 0.
+
+if HasDecoupler {
+	print "Waiting for separation.".
+	wait until not HasDecoupler.
+	reboot. // FIXME kOS processors get confused over separation events
+	}
+
+if not FarEnoughAway {
+	print "Waiting for safe distance.".
+	ActivateEngine().
+	set throttleSetting to 0.1.
+	wait 5.
+	set throttleSetting to 0.
+	until FarEnoughAway {
+		wait 10.
+		}
+	reboot.
+	}
+
+print "Deploying.".
+Deploy.
+
+until AdjustRelayOrbit {
+	print "Further adjustment may be required.".
+	wait 1.
+	}
+
+set core:bootfilename to "boot/simpleboot.ks".
+set kUniverse:ActiveVessel to ClosestVessel.
+reboot.

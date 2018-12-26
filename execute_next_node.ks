@@ -6,6 +6,7 @@
 //  - perform burn
 //  - delete the manoeuvre node
 
+runoncepath("lib/vessel_operations.ks").
 set myNode to nextnode.
 set NAVMODE to "Orbit".
 if sas and (sasmode = "PROGRADE") {
@@ -21,52 +22,6 @@ lock acceleration to ship:maxthrust / ship:mass.
 lock burnDuration to burnvector:mag / acceleration.
 lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 1). 
 lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.50) or (burnvector:mag < 0.001).
-
-// Honour Kerbal Alarm Clock
-function KACAlarmWithin {
-	parameter seconds.
-	if addons:available("KAC") {
-		for alarm in addons:KAC:Alarms {
-			if alarm:remaining > 0 and alarm:remaining <= seconds { return true. }
-			}
-		}
-	return false.
-	}
-
-function NextKACAlarm {
-	set remaining to 999999.
-	for alarm in addons:KAC:Alarms {
-		if alarm:remaining < remaining {
-			set remaining to alarm:remaining.
-			set nextAlarm to alarm.
-			}
-		}
-	return nextAlarm.
-	}
-
-// Warping
-function WarpToTime {
-	parameter destinationTime.
-	set ratesList to kUniverse:timeWarp:RailsRateList.
-	until time:seconds >= destinationTime {
-		set interval to destinationTime - time:seconds.
-		// It takes about 1 real second to speed up or slow down warp.
-		from { set i to ratesList:Length - 1. } until (ratesList[i] < (interval)) or (i = 0) step { set i to i - 1.} do { }.
-		set kUniverse:timeWarp:Warp to i.
-		wait 0.1.
-		set warpInterval to ratesList[kUniverse:timeWarp:Warp].
-		set waitTime to time:seconds + warpInterval - 1.
-		if KACAlarmWithin(warpInterval) {
-			print "Waiting for KAC alarm.".
-			wait until time:seconds > time:seconds + NextKACAlarm:remaining + 5.
-			}
-		else {
-			wait until time:seconds >= waitTime.
-			}
-		}
-	set kUniverse:timeWarp:Warp to 0.
-	wait until kUniverse:timeWarp:IsSettled.
-	}
 
 if sas {
 	unlock steering.
