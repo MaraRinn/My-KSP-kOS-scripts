@@ -1,6 +1,7 @@
 parameter numberOfRelays is 3.
 
 runoncepath("orbital_mechanics.ks").
+runoncepath("lib/vessel_operations.ks").
 
 function PrepareOrbit {
 	parameter desiredRelayPeriod is orbit:body:rotationPeriod.
@@ -21,72 +22,61 @@ sas on.
 wait 1.
 
 if hasNode {
-	print "Executing manoeuvre.".
-	if sasmode = "MANEUVER" { sas off. }
-	run execute_next_node.
+	print "Waiting for manoeuvre.".
+	WaitForNode().
+	}
+else if HasAlarm() {
+	WaitForAlarm().
 	}
 
 set relayCandidates to ship:partstaggedpattern("Relay \d").
 set surveyCandidates to ship:partstaggedpattern("Survey").
+set intendedPeriod to body:rotationPeriod.
 
 PrepareOrbit.
 if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
 	print "(trying again with half stationary period)".
-	PrepareOrbit(orbit:body:rotationPeriod / 2).
+	set intendedPeriod to body:rotationPeriod / 2.
+	PrepareOrbit(intendedPeriod).
 	}
 if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
 	print "(trying again with one third stationary period)".
-	PrepareOrbit(orbit:body:rotationPeriod / 3).
+	set intendedPeriod to orbit:body:rotationPeriod / 3.
+	PrepareOrbit(intendedPeriod).
 	}
 
-if not withinError(orbit:apoapsis, desiredDeployerApoapsis) and not withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
+if not HasNode and not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
 	print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
 	AlterApoapsis(desiredDeployerApoapsis).
-	if NextNode:deltav:mag > 0.1 {
-		set sasmode to "MANEUVER".
-		}
-	else {
-		remove NextNode.
-		}
-	}
-
-if not HasNode and withinError(orbit:apoapsis, desiredDeployerPeriapsis) {
-	print "Fiddling with the orbit a bit.".
-	AlterPeriapsis(desiredDeployerApoapsis).
-	if NextNode:deltav:mag > 0.1 {
-		set sasmode to "MANEUVER".
-		}
-	else {
-		remove NextNode.
-		}
 	}
 
 if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
 	print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
 	AlterPeriapsis(desiredDeployerPeriapsis).
-	if NextNode:deltav:mag > 0.1 {
-		set sasmode to "MANEUVER".
-		}
-	else {
-		remove NextNode.
-		}
 	}
 
 // At this point the deployer is on the appropriate orbit.
 if not HasNode {
 	print "Orbit looks good.".
 	set sasmode to "RETROGRADE".
-	set deployPoint to eta:periapsis - 300.
-	if deployPoint < 0 {
-		set deployPoint to deployPoint + orbit:period.
-		}
 	if (relayCandidates:length > 0 ) {
-		if eta:periapsis < 300 {
+		if eta:periapsis <= 360 {
 			print "Launching relay.".
+			set deployPoint to time:seconds + orbit:period + eta:periapsis - 300. // next deployment is next orbit
 			run launch_relay.
 			}
-		set destinationNode to Node(time:seconds + deployPoint, 0, 0, 0).
-		add destinationNode.
+		else {
+			set deployPoint to time:seconds + eta:periapsis - 300.
+			}
+		if Addons:Available("KAC") {
+			// Use Kerbal Alarm Clock
+			set deployAlarm  to addAlarm("Raw", deployPoint, "Deploy Satellite", "The deployer is approaching periapsis, time to deploy the next satellite.").
+			}
+		else {
+			set destinationNode to Node(deployPoint, 0, 0, 0).
+			add destinationNode.
+			print "Waiting for next deployment opportunity.".
+			}
 		}
 	else if (surveyCandidates:length > 0) {
 		print "Launching survey.".
