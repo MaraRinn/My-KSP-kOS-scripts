@@ -181,7 +181,7 @@ function AlterApoapsis {
 	if maxdv > 0 and deltaV > maxdv {
 		set deltaV to maxdv.
 		}
-	if myOrbit = Orbit {
+	if myOrbit:body = Orbit:body {
 		set timeToPeriapsis to ETA:Periapsis.
 		}
 	else {
@@ -257,12 +257,13 @@ function AlterInclination {
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
+	local dtheta is newInclination - orbit:inclination.
 
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -272,7 +273,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.

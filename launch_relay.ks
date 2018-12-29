@@ -4,7 +4,6 @@
 //
 // Deployment occurs in sequence, with one satellite deployed at each periapsis of the resonant orbit.
 parameter altitude is orbit:periapsis.
-set relayDeployed to false.
 
 function NewVessels {
 	set myTargets to List().
@@ -27,6 +26,7 @@ function LoadProgram {
 		copypath("0:/" + file, processor:volume).
 		}
 	copypath("0:/lib", processor:volume).
+	copypath("0:/boot", processor:volume).
 	processor:deactivate.
 	processor:activate.
 	}
@@ -57,6 +57,7 @@ function DecoupleSatellite {
 set relayCandidates to ship:partstaggedpattern("Relay \d+").
 if relayCandidates:length > 0 {
 	set candidate to relayCandidates[0].
+	print "Loading " + candidate.
 	LoadProgram(candidate, "relay.ks").
 	}
 else {

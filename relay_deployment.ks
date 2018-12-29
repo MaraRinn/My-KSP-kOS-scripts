@@ -1,4 +1,5 @@
 parameter numberOfRelays is 3.
+parameter periapsisLeadTime is 120.
 
 runoncepath("orbital_mechanics.ks").
 runoncepath("lib/vessel_operations.ks").
@@ -18,55 +19,66 @@ function PrepareOrbit {
 	print "Deployer Ap:    " + desiredDeployerApoapsis.
 	}
 
-sas on.
-wait 1.
+function CheckOrbitalParameters {
+	PrepareOrbit.
+	if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
+		print "(trying again with half stationary period)".
+		set intendedPeriod to body:rotationPeriod / 2.
+		PrepareOrbit(intendedPeriod).
+		}
+	if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
+		print "(trying again with one third stationary period)".
+		set intendedPeriod to orbit:body:rotationPeriod / 3.
+		PrepareOrbit(intendedPeriod).
+		}
+
+	if round(orbit:inclination,1) <> 0 {
+		print "Adjusting inclination.".
+		AlterInclination(0).
+		}
+	if not HasNode and not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
+		print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
+		AlterApoapsis(desiredDeployerApoapsis).
+		}
+
+	if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
+		print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
+		AlterPeriapsis(desiredDeployerPeriapsis).
+		}
+	}
 
 if hasNode {
 	print "Waiting for manoeuvre.".
+	sas off.
 	WaitForNode().
 	}
 else if HasAlarm() {
 	WaitForAlarm().
+	}
+else {
+	CheckOrbitalParameters().
 	}
 
 set relayCandidates to ship:partstaggedpattern("Relay \d").
 set surveyCandidates to ship:partstaggedpattern("Survey").
 set intendedPeriod to body:rotationPeriod.
 
-PrepareOrbit.
-if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
-	print "(trying again with half stationary period)".
-	set intendedPeriod to body:rotationPeriod / 2.
-	PrepareOrbit(intendedPeriod).
-	}
-if desiredDeployerApoapsis > (body:soiRadius - body:radius) {
-	print "(trying again with one third stationary period)".
-	set intendedPeriod to orbit:body:rotationPeriod / 3.
-	PrepareOrbit(intendedPeriod).
-	}
-
-if not HasNode and not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
-	print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
-	AlterApoapsis(desiredDeployerApoapsis).
-	}
-
-if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
-	print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
-	AlterPeriapsis(desiredDeployerPeriapsis).
-	}
-
 // At this point the deployer is on the appropriate orbit.
 if not HasNode {
 	print "Orbit looks good.".
-	set sasmode to "RETROGRADE".
+	
 	if (relayCandidates:length > 0 ) {
-		if eta:periapsis <= 360 {
+		if eta:periapsis <= periapsisLeadTime {
 			print "Launching relay.".
-			set deployPoint to time:seconds + orbit:period + eta:periapsis - 300. // next deployment is next orbit
+			sas on.
+			wait 1.
+			set sasmode to "RETROGRADE".
+			wait until ship:angularvel:mag < 0.2.
+			set deployPoint to time:seconds + orbit:period + eta:periapsis - periapsisLeadTime. // next deployment is next orbit
 			run launch_relay.
 			}
 		else {
-			set deployPoint to time:seconds + eta:periapsis - 300.
+			set deployPoint to time:seconds + eta:periapsis - periapsisLeadTime.
 			}
 		if Addons:Available("KAC") {
 			// Use Kerbal Alarm Clock
@@ -87,6 +99,4 @@ if not HasNode {
 		set core:bootfilename to "".
 		}
 	}
-
-wait 5.
 reboot.

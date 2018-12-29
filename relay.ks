@@ -10,12 +10,20 @@ function desiredVelocity {
 	set halfPeriod to intendedPeriod / 2.
 	set thirdPeriod to intendedPeriod / 3.
 	set currentPeriod to myOrbit:Period.
-	if round(currentPeriod / halfPeriod, 1) = 1 {
+	print "Current period: " + round(currentPeriod).
+	print "Intended:       " + round(intendedPeriod).
+	print "Half period:    " + round(halfperiod).
+	print "Third period:   " + round(thirdPeriod).
+	if round(currentperiod / intendedPeriod, 1) > 1 {
+		// do nothing
+		}
+	else if round(currentPeriod / halfPeriod, 1) > 1 {
 		set intendedPeriod to halfPeriod.
 		}
-	else if round(currentPeriod / thirdPeriod, 1) = 1 {
+	else if round(currentPeriod / thirdPeriod, 1) >= 1 {
 		set intendedPeriod to thirdPeriod.
 		}
+	print "Using:          " + round(intendedPeriod).
 	
 	set desiredSMA to SemiMajorAxisFromPeriod(intendedPeriod).
 
@@ -32,12 +40,13 @@ function AdjustRelayOrbit {
 	set velocityErrorVector to intendedVelocityVector - velocity:orbit.
 	set velocityError to velocityErrorVector * prograde:vector.
 
-	if velocityError > 0 { set sasmode to "PROGRADE". }
-	if velocityError < 0 { set sasmode to "RETROGRADE". }
-	if (abs(velocityError) < 0.001) {
+	if (abs(velocityError) < 0.005) {
 		set deploymentComplete to true.
 		return true.
 		}
+	if velocityError > 0 { set sasmode to "PROGRADE". }
+	if velocityError < 0 { set sasmode to "RETROGRADE". }
+	wait 0.1.
 
 	set deltav to abs(velocityError).
 	print "Adjusting velocity by about " + round(velocityError,3) + "m/s".
@@ -53,7 +62,6 @@ function AdjustRelayOrbit {
 		set intendedThrottle to 0.1.
 		}
 	print "Burn time: " + burnDuration + " at " + intendedThrottle + " throttle.".
-	wait 1.
 	wait until ship:angularvel:mag < 0.001.
 	set throttleSetting to intendedThrottle.
 	wait burnDuration.
@@ -138,6 +146,10 @@ if not FarEnoughAway {
 	set throttleSetting to 0.
 	until FarEnoughAway {
 		wait 10.
+		}
+	if eta:periapsis < 300 {
+		print "Waiting until periapsis.".
+		wait until eta:periapsis < 10.
 		}
 	reboot.
 	}
