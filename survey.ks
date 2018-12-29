@@ -72,13 +72,12 @@ function Deploy {
 		}
 	}
 
-function AdjustOrbit {
+function OrbitGood {
 	set surveyAltitude to max( max(body:radius / 10, 25000), BODY:ATM:HEIGHT) + 1000.
 	print "Survey altitude: " + surveyAltitude.
 	print "Inclination:     " + round(orbit:inclination).
 	print "Periapsis:       " + round(orbit:periapsis).
 	print "Apoapsis:        " + round(orbit:apoapsis).
-	set dirty to false.
 	set maxAcceleration to maxThrust / mass.
 	set dvLimit to maxAcceleration * 120.
 	if round(orbit:inclination) <> 90 {
@@ -112,7 +111,7 @@ function AdjustOrbit {
 
 function PerformSurvey {
 	// Don't try performing a survey in the shade
-	if electric:amount < 500 { return false. }
+	if electric:amount < 300 { return false. }
 
 	print "Performing survey.".
 	set surveyEventName to "Perform Orbital Survey".
@@ -158,7 +157,7 @@ else if not FarEnoughAway {
 		}
 	Deploy().
 	}
-else if not AdjustOrbit {
+else if not OrbitGood {
 	print "Orbital correction required.".
 	}
 else if PerformSurvey {
