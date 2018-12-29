@@ -74,7 +74,7 @@ if sas {
 	if NextNode:deltav:mag > 0.01 and not (sasmode = "PROGRADE" or sasmode = "RETROGRADE") { set sasmode to "MANEUVER". }.
 	}
 else {
-	lock steering to burnvector:direction.
+	lock steering to LookDirUp(burnvector, sun:position).
 	}
 wait until burnIsAligned.
 
