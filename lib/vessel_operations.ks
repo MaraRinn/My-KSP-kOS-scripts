@@ -237,4 +237,41 @@ function WithinError {
 		return true.
 		}
 	return false.
+
+// Survey costs from https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner#Electricity_and_time_required
+set antenna to Lexicon().
+// Value is [ energy per Mit, energy per second ]
+antenna:add("Communotron 16", List(6, 20)).
+antenna:add("Communotron 16-S", List(6, 20)).
+antenna:add("Communotron DTS-M1", List(6, 34.3)).
+antenna:add("Communotron HG-55", List(6.67, 133.3)).
+antenna:add("Communotron 88-88", List(10, 200)).
+antenna:add("HG-5 High Gain Antenna", List(9, 51)).
+antenna:add("RA-2 Relay Antenna", List( 24, 68.6)).
+antenna:add("RA-15 Relay Antenna", List( 12, 68.6)).
+antenna:add("RA-100 Relay Antenna", List( 6, 68.6)).
+
+function MitsFromSurvey {
+	declare parameter surveyBody is orbit:body.
+	set roughMits to surveyBody:radius * 0.21.
+	return roughtMits.
+	}
+
+function PowerRequiredForSurvey {
+	declare parameter surveyBody is orbit:body.
+	declare parameter antennaName.
+
+	set mitsRequired to MitsFromSurvey(surveyBod).
+	set energyRequired to mitsRequired * antenna[antennaName][0].
+	return energyRequired.
+	}
+
+function TimeRequiredForSurvey {
+	declare parameter surveyBody is orbit:body.
+	declare parameter antennaName.
+
+	set mitsRequired to MitsFromSurvey(surveyBod).
+	set mitsRate to antenna[antennaName][1] / antenna[antennaName][0].
+	set timeRequired to mitsRequired / mitsRate.
+	return timeRequired.
 	}
