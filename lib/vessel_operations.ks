@@ -237,6 +237,7 @@ function WithinError {
 		return true.
 		}
 	return false.
+	}
 
 // Survey costs from https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner#Electricity_and_time_required
 set antenna to Lexicon().
