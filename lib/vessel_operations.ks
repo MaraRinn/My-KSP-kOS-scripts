@@ -157,10 +157,9 @@ function KACAlarmWithin {
 	}
 
 function NextKACAlarm {
-	set remaining to 999999.
+	set nextAlarm to addons:KAC:Alarms[0].
 	for alarm in addons:KAC:Alarms {
-		if alarm:remaining < remaining {
-			set remaining to alarm:remaining.
+		if alarm:remaining < nextAlarm:remaining {
 			set nextAlarm to alarm.
 			}
 		}
@@ -214,6 +213,7 @@ function WaitForNode {
 
 	if burnETA > 300 {
 		print "Waiting for next manoeuvre in " + round(burnETA) + " seconds.".
+		lock steering to LookDirUp(NextNode:burnvector, SunwardVector).
 		WarpToTime(warpEndTime).
 		if (soonest:type <> "Maneuver") and (soonest:type <> "ManeuverAuto") {
 			DeleteAlarm(soonest:id).
@@ -239,6 +239,20 @@ function WithinError {
 	return false.
 	}
 
+function modulesMatching {
+	parameter comparator.
+	set modulesOfInterest to List().
+	for part in ship:parts {
+		for moduleName in part:modules {
+			set module to part:GetModule(moduleName).
+			if comparator(module) {
+				modulesOfInterest:add(module).
+				}
+			}
+		}
+	return modulesOfInterest.
+	}
+
 // Survey costs from https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner#Electricity_and_time_required
 set antenna to Lexicon().
 // Value is [ energy per Mit, energy per second ]
@@ -254,25 +268,51 @@ antenna:add("RA-100 Relay Antenna", List( 6, 68.6)).
 
 function MitsFromSurvey {
 	declare parameter surveyBody is orbit:body.
-	set roughMits to surveyBody:radius * 0.21.
-	return roughtMits.
+	set roughMits to surveyBody:radius * 0.00021.
+	return roughMits.
 	}
 
 function PowerRequiredForSurvey {
-	declare parameter surveyBody is orbit:body.
 	declare parameter antennaName.
+	declare parameter surveyBody is orbit:body.
 
-	set mitsRequired to MitsFromSurvey(surveyBod).
+	set mitsRequired to MitsFromSurvey(surveyBody).
 	set energyRequired to mitsRequired * antenna[antennaName][0].
 	return energyRequired.
 	}
 
 function TimeRequiredForSurvey {
-	declare parameter surveyBody is orbit:body.
 	declare parameter antennaName.
+	declare parameter surveyBody is orbit:body.
 
-	set mitsRequired to MitsFromSurvey(surveyBod).
+	set mitsRequired to MitsFromSurvey(surveyBody).
 	set mitsRate to antenna[antennaName][1] / antenna[antennaName][0].
 	set timeRequired to mitsRequired / mitsRate.
 	return timeRequired.
+	}
+
+function ModuleHasEnergyFlow {
+	parameter thisMod.
+	return thisMod:HasField("energy flow").
+	}
+
+function CanSurvey {
+	declare parameter antennaName.
+	declare parameter surveyBody is orbit:body.
+
+	set energyFlowModules to modulesMatching(ModuleHasEnergyFlow@).
+	set totalEnergyFlow to 0.
+	for module in energyFlowModules {
+		set moduleEnergyFlow to module:GetField("energy flow").
+		set totalEnergyFlow to totalEnergyFlow + moduleEnergyFlow.
+		}
+
+	set surveyEnergy to PowerRequiredForSurvey(antennaName).
+	set surveyTime to TimeRequiredForSurvey(antennaName).
+	set surveyRate to surveyEnergy / surveyTime.
+	set excessRate to surveyRate - totalEnergyFlow.
+	if excessRate < 0 set excessRate to 0.
+	set excessAmount to excessRate * surveyTime.
+	set surveyPossible to (excessAmount < charge:amount).
+	return surveyPossible.
 	}

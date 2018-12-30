@@ -32,7 +32,7 @@ function CheckOrbitalParameters {
 		PrepareOrbit(intendedPeriod).
 		}
 
-	if round(orbit:inclination,1) <> 0 {
+	if abs(orbit:inclination) >= 0.7 {
 		print "Adjusting inclination.".
 		AlterInclination(0).
 		}

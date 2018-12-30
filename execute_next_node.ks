@@ -8,6 +8,7 @@
 
 runoncepath("lib/vessel_operations.ks").
 set myNode to nextnode.
+lock SunwardVector to -sun:position.
 set NAVMODE to "Orbit".
 if sas and (sasmode = "PROGRADE") {
 	lock burnvector to prograde:vector.
@@ -29,7 +30,7 @@ if sas {
 	if NextNode:deltav:mag > 0.01 and not (sasmode = "PROGRADE" or sasmode = "RETROGRADE") { set sasmode to "MANEUVER". }.
 	}
 else {
-	lock steering to LookDirUp(burnvector, sun:position).
+	lock steering to LookDirUp(burnvector, SunwardVector).
 	}
 wait until burnIsAligned.
 

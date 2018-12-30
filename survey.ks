@@ -3,6 +3,7 @@ runoncepath("lib/vessel_operations").
 set Ship:Control:PilotMainThrottle to 0.
 set throttleSetting to 0.
 lock throttle to throttleSetting.
+lock sunwardVector to sun:position.
 
 list resources in resList.
 for res in resList {
@@ -111,7 +112,7 @@ function OrbitGood {
 
 function PerformSurvey {
 	// Don't try performing a survey in the shade
-	if electric:amount < 300 { return false. }
+	if not CanSurvey("Communotron 16") { return false. }
 
 	print "Performing survey.".
 	set surveyEventName to "Perform Orbital Survey".

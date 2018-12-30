@@ -1,26 +1,30 @@
 runoncepath("orbital_mechanics").
 set throttleSetting to 0.
 lock throttle to throttleSetting.
+lock SunwardVector to sun:position.
 
 function desiredVelocity {
 	parameter myOrbit is orbit.
 	parameter myAltitude is altitude.
 
 	set intendedPeriod to myOrbit:body:rotationPeriod.
-	set halfPeriod to intendedPeriod / 2.
-	set thirdPeriod to intendedPeriod / 3.
 	set currentPeriod to myOrbit:Period.
+	set intendedRatio to round(currentperiod / intendedPeriod, 1).
+	set halfPeriod to intendedPeriod / 2.
+	set halfRatio to round(currentperiod / halfPeriod, 1).
+	set thirdPeriod to intendedPeriod / 3.
+	set thirdRatio to round(currentperiod / thirdPeriod, 1).
 	print "Current period: " + round(currentPeriod).
-	print "Intended:       " + round(intendedPeriod).
-	print "Half period:    " + round(halfperiod).
-	print "Third period:   " + round(thirdPeriod).
-	if round(currentperiod / intendedPeriod, 1) > 1 {
+	print "Intended:       " + round(intendedPeriod) + " (" + intendedRatio + ")".
+	print "Half period:    " + round(halfperiod) + " (" + halfRatio + ")".
+	print "Third period:   " + round(thirdPeriod) + " (" + thirdRatio + ")".
+	if intendedRatio > 0.9 {
 		// do nothing
 		}
-	else if round(currentPeriod / halfPeriod, 1) > 1 {
+	else if halfRatio > 0.9 {
 		set intendedPeriod to halfPeriod.
 		}
-	else if round(currentPeriod / thirdPeriod, 1) >= 1 {
+	else if thirdRatio >= 0.9 {
 		set intendedPeriod to thirdPeriod.
 		}
 	print "Using:          " + round(intendedPeriod).
