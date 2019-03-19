@@ -1,3 +1,5 @@
+runoncepath("lib/utility.ks").
+
 LIST RESOURCES IN RESLIST.
 set hasCharge to false.
 set hasOre to false.
@@ -141,7 +143,10 @@ function undock {
 	}
 
 function HasAlarm {
-	set alarms to ListAlarms("All").
+	if not addons:available("KAC") {
+		return false.
+		}
+	set alarms to addons:KAC:Alarms.
 	return (alarms:length > 0).
 	}
 
@@ -157,13 +162,42 @@ function KACAlarmWithin {
 	}
 
 function NextKACAlarm {
-	set nextAlarm to addons:KAC:Alarms[0].
-	for alarm in addons:KAC:Alarms {
+	set alarmList to addons:KAC:Alarms.
+	set nextAlarm to alarmList[0].
+	for alarm in alarmList {
 		if alarm:remaining < nextAlarm:remaining {
 			set nextAlarm to alarm.
 			}
 		}
 	return nextAlarm.
+	}
+
+function HasShipAlarm {
+	if not addons:available("KAC") {
+		return false.
+		}
+	set alarms to ListAlarms("All").
+	return (alarms:length > 0).
+	}
+
+function NextShipAlarm {
+	set alarms to ListAlarms("ALL").
+	set nextAlarm to alarms[0].
+	for alarm in alarms {
+		if alarm:remaining < nextAlarm:remaining {
+			set nextAlarm to alarm.
+			}
+		}
+	return nextAlarm.
+	}
+
+function NextAlarmIsMine {
+	if not HasShipAlarm() {
+		return false.
+		}
+	set soonestKAC to NextKACAlarm().
+	set soonestShip to NextShipAlarm().
+	return soonestKAC:id = soonestShip:id.
 	}
 
 // Warping
@@ -210,16 +244,21 @@ function WaitForNode {
 	lock burnDuration to NextNode:burnvector:mag / acceleration.
 	lock burnETA to NextNode:eta - (burnDuration/2 + 1).
 	set soonest to NextKACAlarm().
-	set warpEndTime to time:seconds + soonest:remaining.
 
-	if burnETA > 300 {
-		print "Waiting for next manoeuvre in " + round(burnETA) + " seconds.".
+	until burnETA <= 300 {
+		set warpEndTime to time:seconds + soonest:remaining.
+		print "Next manoeuvre in " + TimeString(burnETA).
+		print "Next alarm in " + TimeString(soonest:remaining).
 		lock steering to LookDirUp(NextNode:burnvector, SunwardVector).
 		WarpToTime(warpEndTime).
-		if (soonest:type <> "Maneuver") and (soonest:type <> "ManeuverAuto") {
+		if NextAlarmIsMine() and (soonest:type <> "Maneuver") and (soonest:type <> "ManeuverAuto") {
 			DeleteAlarm(soonest:id).
 			}
-		wait until burnETA <= 300.
+		until NextAlarmIsMine() {
+			// FIXME - it would be nice to switch to the vessel that the next alarm applies to
+			print "waiting for you to handle next alarm.".
+			wait 60.
+			}
 		}
 
 	ExecuteNextNode(sunwardVector).
@@ -312,7 +351,7 @@ function ExecuteNextNode {
 	remove nextnode.
 	}
 
-function modulesMatching {
+function ModulesMatching {
 	parameter comparator.
 	set modulesOfInterest to List().
 	for part in ship:parts {
