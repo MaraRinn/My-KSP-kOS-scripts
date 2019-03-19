@@ -4,7 +4,6 @@
 //
 // Deployment occurs in sequence, with one satellite deployed at each periapsis of the resonant orbit.
 parameter altitude is orbit:periapsis.
-set relayDeployed to false.
 
 function NewVessels {
 	set myTargets to List().
@@ -24,8 +23,10 @@ function LoadProgram {
 	set processor:bootfilename to program.
 	set requiredFiles to List(program, "orbital_mechanics.ks", "execute_next_node.ks").
 	for file in requiredFiles {
-		copypath("0:/" + file, processor:volume:root).
+		copypath("0:/" + file, processor:volume).
 		}
+	copypath("0:/lib", processor:volume).
+	copypath("0:/boot", processor:volume).
 	processor:deactivate.
 	processor:activate.
 	}
@@ -56,6 +57,7 @@ function DecoupleSatellite {
 set relayCandidates to ship:partstaggedpattern("Relay \d+").
 if relayCandidates:length > 0 {
 	set candidate to relayCandidates[0].
+	print "Loading " + candidate.
 	LoadProgram(candidate, "relay.ks").
 	}
 else {
@@ -65,27 +67,7 @@ else {
 	}
 
 DecoupleSatellite(candidate).
-set newTargets to NewVessels.
-set newSatellite to newTargets[0].
-
-set myConnection to newSatellite:connection.
-wait until newSatellite:distance > 20.
-set kuniverse:timewarp:rate to 1.
-print "Sending reboot command.".
-set message to List("reboot").
-myConnection:SendMessage(message).
-wait 10.
-print "Sending deploy command.".
-set message to List("deploy", 200000).
-myConnection:SendMessage(message).
-
-until relayDeployed {
-	wait until not ship:messages:empty.
-	set thisMessage to ship:messages:pop.
-	if thisMessage:content = "deployed" { set relayDeployed to true. }
-	}
-set message to List("goodbye").
-myConnection:SendMessage(message).
-
-set kUniverse:ActiveVessel to ship.
-wait 0.1.
+wait until kUniverse:ActiveVessel <> ship.
+print "Waiting for deployed satellite to return control.".
+wait until kUniverse:ActiveVessel = ship.
+print "Control has been returned.".

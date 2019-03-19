@@ -7,8 +7,6 @@ print " - Settled".
 wait 3.
 print " - Thumbs twiddled".
 switch to 0.
-set launch_delay_full_throttle to false.
-set SteeringManager:MaxStoppingTime to 5.
 set Ship:Control:PilotMainThrottle to 0.
 
 if core:tag:length > 0 {

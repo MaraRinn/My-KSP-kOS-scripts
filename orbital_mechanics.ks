@@ -82,18 +82,6 @@ function BindAngleTo360 {
 	return angle.
 }
 
-function TimeString {
-	declare parameter secondsToDisplay.
-	
-	set daysValue to floor(secondsToDisplay / (3600 * 6)).
-	set afterDays to secondsToDisplay - (daysValue * 3600 * 6).
-	set hoursValue to floor(afterDays / 3600).
-	set afterHours to afterDays - (hoursValue * 3600).
-	set minutesValue to floor(afterHours / 60).
-	set seconds to floor(afterHours - (minutesValue * 60)).
-	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
-	}
-
 function TimeToNearestNode {
 	declare parameter myOrbit is Orbit.
 
@@ -168,7 +156,7 @@ function AlterApoapsis {
 	parameter newApoapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
-	parameter maximumBurnTime is 0.
+	parameter maxdv is 0.
 
 	set oldPeriapsisRadius to Orbit:Periapsis + Orbit:Body:Radius.
 	set oldSemiMajorAxis to Orbit:SemiMajorAxis.
@@ -178,7 +166,10 @@ function AlterApoapsis {
 	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, Orbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
-	if myOrbit = Orbit {
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
+		}
+	if myOrbit:body = Orbit:body {
 		set timeToPeriapsis to ETA:Periapsis.
 		}
 	else {
@@ -198,6 +189,7 @@ function AlterPeriapsis {
 	parameter newPeriapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
+	parameter maxdv is 0.
 
 	set oldApoapsisRadius to myOrbit:Apoapsis + myOrbit:Body:Radius.
 	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
@@ -207,6 +199,9 @@ function AlterPeriapsis {
 	set newOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtApoapsis - oldOrbitSpeedAtApoapsis.
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
+		}
 	set angleToApoapsis to 180 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 	if angleToApoapsis < 0 {
 		set angleToApoapsis to angleToApoapsis + 360.
@@ -250,12 +245,13 @@ function AlterInclination {
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
+	local dtheta is newInclination - orbit:inclination.
 
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -265,7 +261,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set newInclination to -newInclination.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.
