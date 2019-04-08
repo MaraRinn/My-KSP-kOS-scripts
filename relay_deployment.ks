@@ -36,15 +36,23 @@ function CheckOrbitalParameters {
 		print "Adjusting inclination.".
 		AlterInclination(0).
 		}
-	if not HasNode and not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
+	else if not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
 		print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
 		AlterApoapsis(desiredDeployerApoapsis).
 		}
 
-	if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
+	else if not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
 		print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
 		AlterPeriapsis(desiredDeployerPeriapsis).
 		}
+	}
+
+function AdjustAttitudeForDeployment {
+	sas on.
+	wait 1.
+	set sasmode to "RETROGRADE".
+	wait until VectorAngle(ship:velocity:orbit, ship:facing:vector) > 135.
+	wait until ship:angularvel:mag < 0.2.
 	}
 
 if hasNode {
@@ -70,10 +78,7 @@ if not HasNode {
 	if (relayCandidates:length > 0 ) {
 		if eta:periapsis <= periapsisLeadTime {
 			print "Launching relay.".
-			sas on.
-			wait 1.
-			set sasmode to "RETROGRADE".
-			wait until ship:angularvel:mag < 0.2.
+			AdjustAttitudeForDeployment().
 			set deployPoint to time:seconds + orbit:period + eta:periapsis - periapsisLeadTime. // next deployment is next orbit
 			run launch_relay.
 			}
