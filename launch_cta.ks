@@ -7,6 +7,7 @@ runpath("lib/vessel_operations.ks").
 set LaunchGuidanceParameters to Lexicon().
 
 function ThrottleCapMethod {
+	if not (defined MaxThrust) or (MaxThrust = 0) { return 0. }
 	return AccelerationCap * Mass / MaxThrust.
 	}
 set ThrottleCapDelegate to ThrottleCapMethod@.
@@ -26,6 +27,24 @@ function ThrottleGuidanceConstantTimeToApoapsis {
 	set ThrottlePID:SetPoint to TargetApoapsisETA.
 	return ThrottlePID:Update(time:seconds, eta:apoapsis).	
 	}
+set ThrottlePID to pidloop(1,0,0,0,ThrottleCap).
+set ThrottleIntent to 0.
+
+
+function ConfigureCTTAPitchGuidance {
+	parameter PitchGuidancePID.
+	parameter TargetTimeToApoapsis is 50.
+
+	set PitchGuidancePID:SetPoint to TargetTimeToApoapsis.
+	}
+
+function PitchGuidanceConstantTimeToApoapsis {
+	parameter TargetApoapsisETA.
+
+	set PitchGuidancePID:SetPoint to TargetApoapsisETA.
+	return PitchGuidancePID:Update(time:seconds, eta:apoapsis + 1).
+	}
+set PitchGuidancePID to pidloop(5,0,0,-30,50).
 
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0. // Stop throttle resetting to 50%
 set AtmosphereAltitude to BODY:ATM:HEIGHT.
@@ -54,10 +73,8 @@ WHEN not (defined MaxThrust) or (MaxThrust = 0) THEN {
 
 wait until MaxThrust > 0.
 
-set ThrottlePID to pidloop(1,0,0,0,ThrottleCap).
-set ThrottleIntent to 0.
-
 ConfigureCTTAThrottleGuidance(ThrottlePID, LaunchTimeToApoapsis).
+ConfigureCTTAPitchGuidance(PitchGuidancePID, LaunchTimeToApoapsis).
 
 print "Intended Apoapsis: " + OrbitAltitude.
 print "Intended TTA:      " + LaunchTimeToApoapsis.
@@ -90,9 +107,12 @@ until runmode = "finished" {
 	if runmode = "gravity turn" {
 		wait until MaxThrust > 0.
 		set ThrottleIntent to ThrottleGuidanceConstantTimeToApoapsis(LaunchTimeToApoapsis).
+		set PitchIntent to PitchGuidanceConstantTimeToApoapsis(LaunchTimeToApoapsis).
+		print "PI: " + round(PitchIntent) + "      " at (0, 20).
 		if (Apoapsis >= OrbitAltitude) { set runmode to "maintain apoapsis". }
 		}
 	if (runmode = "maintain apoapsis") {
+		wait until MaxThrust > 0.
 		if (Altitude > MinimumPeriapsis) { set runmode to "finished". }
 		set apoapsis_error to max(0, OrbitAltitude - Apoapsis) / OrbitAltitude.
 		set ThrottleIntent to ship:velocity:orbit:mag * apoapsis_error / maxthrust / mass.
