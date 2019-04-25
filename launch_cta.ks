@@ -1,5 +1,6 @@
 Parameter OrbitAltitude is 0.
 Parameter AccelerationCap is 30. // m/s maximum acceleration
+Parameter DrawVectors is false.
 
 runoncepath("orbital_mechanics.ks").
 runpath("lib/vessel_operations.ks").
@@ -42,9 +43,10 @@ function PitchGuidanceConstantTimeToApoapsis {
 	parameter TargetApoapsisETA.
 
 	set PitchGuidancePID:SetPoint to TargetApoapsisETA.
-	return PitchGuidancePID:Update(time:seconds, eta:apoapsis + 1).
+	return PitchGuidancePID:Update(time:seconds, eta:apoapsis).
 	}
-set PitchGuidancePID to pidloop(5,0,0,-30,50).
+set PitchGuidancePID to pidloop(1,0,-1,-30,30).
+set AoAIntent to 0.
 
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0. // Stop throttle resetting to 50%
 set AtmosphereAltitude to BODY:ATM:HEIGHT.
@@ -83,6 +85,23 @@ print "Minimum Periapsis: " + MinimumPeriapsis.
 set runmode to "lift off".
 set old_runmode to "".
 lock Throttle to ThrottleIntent.
+
+function CalculatePitchIntentVector {
+	parameter AngleOfAttack.
+
+	set progradeVector to velocity:surface.
+	if AngleOfAttack < 1 { return progradeVector. }
+	set pitchAxis to VectorCrossProduct(up:foreVector, progradeVector).
+	set alteredProgradeVector to RotateVector(progradeVector, AngleOfAttack, pitchAxis).
+	return alteredProgradeVector.
+	}
+
+if DrawVectors {
+	set ProgradeArrow to VecDraw(V(0,0,0), {return velocity:surface.}, YELLOW, "Velocity", 1, true, 1).
+	set PitchIntentArrow to VecDraw(V(0,0,0), {return CalculatePitchIntentVector(AoAIntent).}, GREEN, "Intent", 1, true, 1).
+	set ForwardArrow to VecDraw(V(0,0,0), {return ship:facing:forevector:normalized * 50.}, BLUE, "", 1, true, 1).
+	}
+
 until runmode = "finished" {
 	if not(old_runmode = runmode) {
 		print "Runmode: " + runmode.
@@ -94,34 +113,32 @@ until runmode = "finished" {
 		set ThrottleIntent to ThrottleCap.
 		}
 	if runmode = "enter gravity turn" {
-		if not sas {
-			unlock steering.
-			sas on.
-			wait 0.1.
-			set sasmode to "PROGRADE".
-			}
 		wait until MaxThrust > 0.
 		set ThrottleIntent to ThrottleCap.
-		if (LaunchGuidanceParameters["Stage Count"] >= LaunchGuidanceParameters["Skip Stages"]) { set runmode to "gravity turn". }
+		set SteeringIntent to Velocity:Surface.
+		set TTAConverged to (ABS(LaunchTimeToApoapsis - eta:apoapsis) < 2).
+		if (LaunchGuidanceParameters["Stage Count"] >= LaunchGuidanceParameters["Skip Stages"]) and TTAConverged { set runmode to "gravity turn". }
 		}
 	if runmode = "gravity turn" {
 		wait until MaxThrust > 0.
 		set ThrottleIntent to ThrottleGuidanceConstantTimeToApoapsis(LaunchTimeToApoapsis).
-		set PitchIntent to PitchGuidanceConstantTimeToApoapsis(LaunchTimeToApoapsis).
-		print "PI: " + round(PitchIntent) + "      " at (0, 20).
-		if (Apoapsis >= OrbitAltitude) { set runmode to "maintain apoapsis". }
+		set AoAIntent to PitchGuidanceConstantTimeToApoapsis(LaunchTimeToApoapsis).
+		set SteeringIntent to CalculatePitchIntentVector(AoAIntent).
+		print "PI: " + round(AoAIntent) + "      " at (0, 20).
+		if (Apoapsis >= OrbitAltitude) or (ThrottleIntent < 0.2) { set runmode to "maintain apoapsis". }
 		}
 	if (runmode = "maintain apoapsis") {
 		wait until MaxThrust > 0.
 		if (Altitude > MinimumPeriapsis) { set runmode to "finished". }
 		set apoapsis_error to max(0, OrbitAltitude - Apoapsis) / OrbitAltitude.
-		set ThrottleIntent to ship:velocity:orbit:mag * apoapsis_error / maxthrust / mass.
+		set ThrottleIntent to ship:velocity:orbit:mag * apoapsis_error / maxthrust * mass.
+		set SteeringIntent to ship:velocity:orbit.
 		}
 	}
 
+ClearVecDraws().
 set ThrottleIntent to 0.
 unlock all.
-set sasmode to "STABILITY".
 print "Ascent completed.".
 create_circularise_node().
 ExecuteNextNode().
