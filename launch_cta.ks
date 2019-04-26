@@ -90,7 +90,6 @@ function CalculatePitchIntentVector {
 	parameter AngleOfAttack.
 
 	set progradeVector to velocity:surface.
-	if AngleOfAttack < 1 { return progradeVector. }
 	set pitchAxis to VectorCrossProduct(up:foreVector, progradeVector).
 	set alteredProgradeVector to RotateVector(progradeVector, AngleOfAttack, pitchAxis).
 	return alteredProgradeVector.
@@ -116,7 +115,7 @@ until runmode = "finished" {
 		wait until MaxThrust > 0.
 		set ThrottleIntent to ThrottleCap.
 		set SteeringIntent to Velocity:Surface.
-		set TTAConverged to (ABS(LaunchTimeToApoapsis - eta:apoapsis) < 2).
+		set TTAConverged to (ABS(LaunchTimeToApoapsis - eta:apoapsis) < 1).
 		if (LaunchGuidanceParameters["Stage Count"] >= LaunchGuidanceParameters["Skip Stages"]) and TTAConverged { set runmode to "gravity turn". }
 		}
 	if runmode = "gravity turn" {
