@@ -17,12 +17,27 @@ function DisplayValues {
 	set row to 1.
 	for item in readings:keys {
 		if item:length > maxLabelWidth { set maxLabelWidth to item:length. }
-		if readings[item]:length > maxDataWidth {
-			set maxDataWidth to readings[item]:length.
+		set valueString to readings[item]:ToString.
+		if valueString:length > maxDataWidth {
+			set maxDataWidth to valueString:length.
 			}
 		}
 	for item in readings:keys {
-		print item:PadRight(maxLabelWidth) + "  " + readings[item]:PadLeft(maxDataWidth) at (0,row).
+		set valueString to readings[item]:ToString.
+		print item:PadRight(maxLabelWidth) + "  " + valueString:PadLeft(maxDataWidth) at (0,row).
 		set row to row + 1.
 		}
+	}
+
+function VectorToCompassAngle {
+	parameter V.
+	parameter subject is ship.
+	set upVec to subject:up:vector.
+	set northVec to subject:north:vector.
+	set eastVec to VectorCrossProduct(upVec, northVec).
+	set velEast to VDOT(V, eastVec).
+	set velNorth to VDOT(V, northVec).
+	set compass to arctan2(velEast, velNorth).
+	if compass < 0 { set compass to compass + 360. }
+	return compass.
 	}
