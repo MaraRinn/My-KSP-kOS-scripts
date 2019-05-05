@@ -326,19 +326,15 @@ function ExecuteNextNode {
 	set done to false.
 	set desiredThrottle to 0.
 	lock throttle to desiredThrottle.
+	wait until burnIsAligned.
 	until done {
-		if not burnIsAligned {
-			print "aligning".
-			set desiredThrottle to 0.
-			wait until burnIsAligned.
+		if burnvector:mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
+			set done to true.
+			set throttleSetting to 0.
 			}
 		else {
 			set throttleIntent to burnvector:mag/acceleration.
 			set throttleSetting to min(throttleIntent, 1).
-			if burnvector:mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
-				set done to true.
-				set throttleSetting to 0.
-				}
 			set desiredThrottle to throttleSetting.
 			}
 		wait 0.1.
@@ -427,4 +423,29 @@ function CanSurvey {
 	set excessAmount to excessRate * surveyTime.
 	set surveyPossible to (excessAmount < charge:amount).
 	return surveyPossible.
+	}
+
+function TerrainHeight {
+	if body = minmus {
+		return 5800.
+		}
+	else if body = ike {
+		return 12800.
+		}
+	else if body = mun {
+		return 7100.
+		}
+	else if body = kerbin {
+		return 5000.
+		}
+	return 0.
+	}
+
+function ParameterDefault {
+	parameter SourceLexicon.
+	parameter KeyName.
+	parameter DefaultValue.
+
+	if not(SourceLexicon:HasKey(KeyName)) { return DefaultValue. }
+	return SourceLexicon[KeyName].
 	}
