@@ -14,17 +14,23 @@ function DisplayValues {
 	parameter readings.
 	set maxLabelWidth to 0.
 	set maxDataWidth to 0.
+	set rightMargin to 0.
 	set row to 1.
+	// Calculate column widths
 	for item in readings:keys {
-		if item:length > maxLabelWidth { set maxLabelWidth to item:length. }
+		if item:length > maxLabelWidth {
+			set maxLabelWidth to item:length.
+			}
 		set valueString to readings[item]:ToString.
 		if valueString:length > maxDataWidth {
 			set maxDataWidth to valueString:length.
 			}
 		}
+	set rightMargin to terminal:width - maxLabelWidth - maxDataWidth - 2.
+	// Now display key/value pairs
 	for item in readings:keys {
 		set valueString to readings[item]:ToString.
-		print item:PadRight(maxLabelWidth) + "  " + valueString:PadLeft(maxDataWidth) at (0,row).
+		print item:PadRight(maxLabelWidth) + "  " + valueString:PadLeft(maxDataWidth) + " ":PadLeft(rightMargin) at (0,row).
 		set row to row + 1.
 		}
 	}
