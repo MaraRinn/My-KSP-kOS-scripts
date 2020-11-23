@@ -135,6 +135,7 @@ function ClosestVessel {
 	}
 
 set Ship:Control:PilotMainThrottle to 0.
+set ParentVessel to ClosestVessel.
 
 if HasDecoupler {
 	print "Waiting for separation.".
@@ -167,5 +168,5 @@ until AdjustRelayOrbit {
 	}
 
 set core:bootfilename to "boot/simpleboot.ks".
-set kUniverse:ActiveVessel to ClosestVessel.
+set kUniverse:ActiveVessel to ParentVessel.
 reboot.

@@ -74,7 +74,9 @@ function Deploy {
 	}
 
 function OrbitGood {
-	set surveyAltitude to max( max(body:radius / 10, 25000), BODY:ATM:HEIGHT) + 1000.
+	// See https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner#Scanning_requirements
+	// for actual limits. Being conservative here
+	set surveyAltitude to min(body:radius * 4, 1000000).
 	print "Survey altitude: " + surveyAltitude.
 	print "Inclination:     " + round(orbit:inclination).
 	print "Periapsis:       " + round(orbit:periapsis).
@@ -145,6 +147,8 @@ if HasNode {
 else if HasDecoupler {
 	print "Waiting for separation.".
 	wait until not HasDecoupler.
+	print "Decoupler decoupled.".
+	wait 5.
 	reboot. // FIXME kOS processors get confused over separation events
 	}
 else if not FarEnoughAway {
@@ -160,6 +164,7 @@ else if not FarEnoughAway {
 	}
 else if not OrbitGood {
 	print "Orbital correction required.".
+	wait 5.
 	}
 else if PerformSurvey {
 	print "Survey completed.".

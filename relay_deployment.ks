@@ -1,15 +1,33 @@
 parameter numberOfRelays is 3.
 parameter periapsisLeadTime is 120.
 
+// Run this script on the deployer vessel.
+// All the satellites should be connected directly to the deployer via decouplers.
+// Exactly one component on each relay satellite should be tagged "Relay N" (where N is a single digit)
+// There can also be one (or no) satellite tagged "Survey"
+//
+// The deployer will attempt to set up a resonant orbit, then deploy one satellite per orbit.
+// For most bodies this resonant orbit will be a stationary orbit for the deployed satellites
+//    and a (N-1)/N resonant orbit for the deployer. Where this can't happen, the script will
+//    try the options of half or a third of the stationary orbit period.
+// The relay satellites will adjust their orbit to the appropriate period (this may result in wonky orbits)
+// The survey satellite will attempt to insert itself into the suitable survey orbit for the body it's orbiting.
+
 runoncepath("orbital_mechanics.ks").
 runoncepath("lib/vessel_operations.ks").
+
+set AtmosphereAltitude to BODY:ATM:HEIGHT.
+set MinimumPeriapsis to max(AtmosphereAltitude, TerrainHeight()) + 100.
+set intendedPeriod to 0.
+set desiredDeployerApoapsis to 0.
 
 function PrepareOrbit {
 	parameter desiredRelayPeriod is orbit:body:rotationPeriod.
 
 	set desiredRelaySMA to SemiMajorAxisFromPeriod(desiredRelayPeriod).
 	set desiredRelayAltitude to desiredRelaySMA - body:radius.
-	set desiredDeployerSMA to SemiMajorAxisFromPeriod(desiredRelayPeriod * (numberOfRelays + 1)/numberOfRelays).
+	set desiredDeployerPeriod to desiredRelayPeriod * (numberOfRelays + 1)/numberOfRelays.
+	set desiredDeployerSMA to SemiMajorAxisFromPeriod(desiredDeployerPeriod).
 	set desiredDeployerApoapsis to 2 * desiredDeployerSMA - desiredRelaySMA - body:radius.
 	set desiredDeployerPeriapsis to desiredRelayAltitude.
 
@@ -17,6 +35,7 @@ function PrepareOrbit {
 	print "Deployment Parameters:".
 	print "Relay Altitude: " + desiredRelayAltitude.
 	print "Deployer Ap:    " + desiredDeployerApoapsis.
+	print "Deployer P:     " + TimeString(desiredDeployerPeriod).
 	}
 
 function CheckOrbitalParameters {
@@ -36,35 +55,53 @@ function CheckOrbitalParameters {
 		print "Adjusting inclination.".
 		AlterInclination(0).
 		}
+	if not HasNode and (orbit:periapsis < MinimumPeriapsis) {
+		print "Raising periapsis to minimum safe altitude".
+		AlterPeriapsis(MinimumPeriapsis + 100).
+		}
 	if not HasNode and not WithinError(orbit:apoapsis, desiredDeployerApoapsis) {
 		print "Adjusting apoapsis from " + round(orbit:apoapsis) + " to " + round(desiredDeployerApoapsis).
 		AlterApoapsis(desiredDeployerApoapsis).
 		}
-
 	if not HasNode and not withinError(orbit:periapsis, desiredDeployerPeriapsis) {
 		print "Adjusting periapsis from " + round(orbit:periapsis) + " to " + round(desiredDeployerPeriapsis).
 		AlterPeriapsis(desiredDeployerPeriapsis).
 		}
 	}
 
+function ReadyForDeployment {
+	set isOrbitCorrect to 0.
+	if (desiredDeployerPeriod > 0) {
+		if (abs(desiredDeployerApoapsis - ship:apoapsis) < 1000) {
+			if (abs(desiredDeployerPeriapsis - ship:periapsis) < 1000) {
+				if (abs(desiredDeployerPeriod - ship:orbit:period) < 120) {
+					set isOrbitCorrect to 1.
+					}
+				}
+			}
+		}
+	else {
+		print "No intended period calculated.".
+		}
+	return isOrbitCorrect.
+}
+
 if hasNode {
 	print "Waiting for manoeuvre.".
 	sas off.
 	WaitForNode().
+	reboot.
 	}
 else if HasAlarm() {
 	WaitForAlarm().
 	}
-else {
-	CheckOrbitalParameters().
-	}
+CheckOrbitalParameters().
 
-set relayCandidates to ship:partstaggedpattern("Relay \d").
-set surveyCandidates to ship:partstaggedpattern("Survey").
-set intendedPeriod to body:rotationPeriod.
-
-// At this point the deployer is on the appropriate orbit.
-if not HasNode {
+// At this point the deployer should be on the appropriate orbit.
+if ReadyForDeployment {
+	set relayCandidates to ship:partstaggedpattern("Relay \d").
+	set surveyCandidates to ship:partstaggedpattern("Survey").
+	set intendedPeriod to body:rotationPeriod.
 	print "Orbit looks good.".
 	
 	if (relayCandidates:length > 0 ) {
@@ -99,4 +136,5 @@ if not HasNode {
 		set core:bootfilename to "".
 		}
 	}
+wait 5.
 reboot.
