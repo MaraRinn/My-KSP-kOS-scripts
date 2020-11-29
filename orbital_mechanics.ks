@@ -172,12 +172,16 @@ function AlterApoapsis {
 	if myOrbit:body = Orbit:body {
 		set timeToPeriapsis to ETA:Periapsis.
 		}
-	else {
+	else if (myOrbit:Eccentricity <= 1) {
 		set angleToPeriapsis to 360 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 		if angleToPeriapsis < 0 {
 			set angleToPeriapsis to angleToPeriapsis + 360.
 			}
 		set timeToPeriapsis to angleToPeriapsis * (myOrbit:Period / 360).
+		}
+	else {
+		print "FIXME - Can't calculate periapsis for hyperbolic orbits yet".
+		return false.
 		}
 	set nodeTime to timeToPeriapsis + timeOfInterest.
 	set newNode to node(nodeTime, 0, 0, deltaV).
@@ -511,9 +515,9 @@ function MapVectorToSpace{
 	parameter velocityVector.
 
 	// Remembering KSP is left-handed
-	parameter Vp is velocityVector. // prograde vector
-	parameter Vn is VectorCrossProduct(positionVector, velocityVector). // normal vector
-	parameter Vr is VectorCrossProduct(Vp, Vn). // radial vector
+	set Vp to velocityVector. // prograde vector
+	set Vn to VectorCrossProduct(positionVector, velocityVector). // normal vector
+	set Vr to VectorCrossProduct(Vp, Vn). // radial vector
 
 	set Np to vDot(dV, Vp) / Vp:mag.
 	set Nn to vDot(dV, Vn) / Vn:mag.

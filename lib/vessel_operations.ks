@@ -426,20 +426,26 @@ function CanSurvey {
 	}
 
 function TerrainHeight {
-	if body = minmus {
+	parameter bodyOfInterest is Body.
+	if bodyOfInterest = minmus {
 		return 5800.
 		}
-	else if body = ike {
+	else if bodyOfInterest = ike {
 		return 12800.
 		}
-	else if body = mun {
+	else if bodyOfInterest = mun {
 		return 7100.
 		}
-	else if body = kerbin {
+	else if bodyOfInterest = kerbin {
 		return 5000.
 		}
 	return 0.
 	}
+
+function MinimumSafePeriapsis {
+	parameter bodyOfInterest is Body.
+	return max(bodyOfInterest:ATM:Height, TerrainHeight(bodyOfInterest)).
+}
 
 function ParameterDefault {
 	parameter SourceLexicon.

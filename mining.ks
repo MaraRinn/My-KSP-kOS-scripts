@@ -25,12 +25,12 @@ function ManageDrills {
 		set oreRation to drillCount.
 		}
 	else {
-		set oreRation to drillCount - floor(drillCount * (orePercent - 90) / 10).
+		set oreRation to drillCount - floor(drillCount * orePercent / 100).
 		}
 	set powerRation to min(floor(drillCount * chargePercent / 96), drillCount).
 	if orePercent < 90 and chargePercent > 10 {
 		set oreRation to drillCount.
-		set powerRationt to drillCount.
+		set powerRation to drillCount.
 		}
 	set drillDemand to min(oreRation, powerRation).
 	
@@ -154,7 +154,8 @@ function ManageISRU {
 
 set miningStarted to time:seconds.
 set startingFuelLevel to fuel:amount.
-until fuelFull {
+set fillTimeEstimate to List().
+until fuelFull {	
 	print "Charge: " + round(charge:amount) + " (" + chargePercent() + "%)  " at (0,4).
 	print "Ore:    " + round(ore:amount) + " (" + orePercent() + "%)  " at (0,5).
 	print "Fuel:   " + round(fuel:amount) + " (" + fuelPercent() + "%)  " at (0,6).
@@ -192,7 +193,20 @@ until fuelFull {
 		set fuelRate to (fuel:amount - startingFuelLevel)/(time:seconds - miningStarted).
 		print "FUEL RATE:    " + round(fuelRate,2) at (0,9).
 		if fuel:amount < fuel:capacity {
-			print "TIME TO FILL: " + TimeString(round((fuel:capacity - fuel:amount)/fuelRate)) + "    " at (0,10).
+			set thisFillEstimate to round((fuel:capacity - fuel:amount)/fuelRate).
+			if (fillTimeEstimate:length > 5) {
+				set runningSum to 0.
+				set fillIterator to fillTimeEstimate:Iterator.
+				until not fillIterator:Next {
+					set runningSum to runningSum + fillIterator:Value.
+					}
+				set meanEstimate to runningSum / fillTimeEstimate:length.
+				}
+			fillTimeEstimate:add(thisFillEstimate).
+			if fillTimeEstimate:length > 20 {
+				fillTimeEstimate:remove(0).
+				}
+			print "TIME TO FILL: " + TimeString(thisFillEstimate) + "    " at (0,10).
 			}
 		else {
 			print "FULL." at (0,10).
