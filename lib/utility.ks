@@ -12,10 +12,10 @@ function TimeString {
 
 function DisplayValues {
 	parameter readings.
+	parameter row is 1.
 	set maxLabelWidth to 0.
 	set maxDataWidth to 0.
 	set rightMargin to 0.
-	set row to 1.
 	// Calculate column widths
 	for item in readings:keys {
 		if item:length > maxLabelWidth {
