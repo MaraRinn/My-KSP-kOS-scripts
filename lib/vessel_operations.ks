@@ -408,6 +408,7 @@ function CanSurvey {
 	declare parameter antennaName.
 	declare parameter surveyBody is orbit:body.
 
+	// look for power sources
 	set energyFlowModules to modulesMatching(ModuleHasEnergyFlow@).
 	set totalEnergyFlow to 0.
 	for module in energyFlowModules {
@@ -418,10 +419,10 @@ function CanSurvey {
 	set surveyEnergy to PowerRequiredForSurvey(antennaName).
 	set surveyTime to TimeRequiredForSurvey(antennaName).
 	set surveyRate to surveyEnergy / surveyTime.
-	set excessRate to surveyRate - totalEnergyFlow.
-	if excessRate < 0 set excessRate to 0.
-	set excessAmount to excessRate * surveyTime.
-	set surveyPossible to (excessAmount < charge:amount).
+	set unmetEnergyRate to surveyRate - totalEnergyFlow.
+	if unmetEnergyRate < 0 set unmetEnergyRate to 0.
+	set unmetEnergyAmount to unmetEnergyRate * surveyTime.
+	set surveyPossible to (unmetEnergyAmount < charge:amount).
 	return surveyPossible.
 	}
 
