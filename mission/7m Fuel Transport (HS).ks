@@ -3,15 +3,10 @@ print "Initialising 7m Fuel Transport (HS)".
 runoncepath("orbital_mechanics.ks").
 runoncepath("lib/vessel_operations.ks").
 
-set SteeringManager:MaxStoppingTime to 5.
-set minmusTransferFuel to 6800. // Roughly enough fuel to get to Minmus and rendezvous with the station there
+set SteeringManager:MaxStoppingTime to 3.5.
+set minmusTransferFuel to 7300. // Roughly enough fuel to get to Minmus and rendezvous with the station there
 
-if mass > 500 {
-	rcs on.
-	}
-else {
-	rcs off.
-	}
+rcs on.
 
 function ConfigureForAerobraking {
 	parameter brakingAltitude.
@@ -23,26 +18,25 @@ function ConfigureForAerobraking {
 			print " ** altering next periapsis to " + brakeAltInKM + "km for aerobraking ** ".
 			AlterPeriapsis(brakingAltitude).
 			sas off.
-			wait until not HasNode.
+			return.
 			}
 		else {
 			print " ((FIXME: adjust periapsis to " + brakeAltInKM + "km before getting there)) ".
 			wait until round(orbit:periapsis / 1000) = brakeAltInKM.
 			}
-		reboot.
 		}
 	print " ** Batten down the hatches, aerobraking ahead **".
 	set checkNode to Node(time:seconds + eta:periapsis, 0, 0, 0).
 	add checkNode.
-	rcs off.
 	sas off.
 	kUniverse:QuickSaveTo("Preparing for aerobraking").
-	wait until altitude < 100000.
+	wait until altitude < 120000 and eta:periapsis < eta:apoapsis.
 	set kUniverse:TimeWarp:Warp to 0.
 	wait until kUniverse:TimeWarp:IsSettled.
-	sas off.
+	sas off. // Using KOS cooked steering because SAS relies on probe control, which is disrupted by aerobraking plasma
 	rcs on.
 	lock steering to prograde.
+	panels off.
 	print " - transferring fuel to forward tank".
 	set transferTank to ship:partsdubbed("Transfer Tank").
 	set vesselFuel to ship:partsdubbed("Vessel Fuel").
@@ -55,8 +49,12 @@ function ConfigureForAerobraking {
 	wait until NextNode:ETA < 0 and altitude > 70000.
 	remove NextNode.
 	unlock steering.
+	panels on.
 	print " (aerobraking manoeuvre completed) ".
-	reboot.
+	}
+
+function ConfigureChillMode {
+	panels on.
 	}
 
 list elements in elementList.
@@ -66,12 +64,10 @@ if elementList:length > 1 {
 	if status = "ORBITING" and body = Kerbin {
 		fuelToStation("7m Fuel Transport", minmusTransferFuel, true).
 		undock("7m Fuel Transport").
-		reboot.
 		}
 	if status = "LANDED" and body = Minmus {
 		print " (( Landed on Minmnus and connected to something, Press 5 to launch )) ".
 		wait until AG5.
-		reboot.
 		}
 	}
 
@@ -82,11 +78,18 @@ if HasNode and NextNode:ETA < 0 {
 
 if HasNode {
 	if round(NextNode:deltaV:mag) = 0 and orbit:body = Kerbin and orbit:periapsis < orbit:body:atm:height {
-		ConfigureForAerobraking(orbit:periapsis).
+		if eta:periapsis < eta:apoapsis {
+			ConfigureForAerobraking(orbit:periapsis).
+			}
+		else {
+			set checkNode to Node(time:seconds + eta:periapsis, 0, 0, 0).
+			add checkNode.
+			}
 		}
-	print "** Waiting for manoeuvre ** ".
-	wait until not HasNode.
-	reboot.
+	else {
+		print " (( Waiting for Manoeuvre )) ".
+		WaitForNode().
+		}
 	}
 else if orbit:body = Mun {
 	print "Attempting to manage Mun fly-by".
@@ -104,22 +107,26 @@ else if orbit:body = Mun {
 		set sasmode to "NORMAL".
 		}
 	print " (( Chilling out until Kerbin SOI )) ".
-	sas on.
-	rcs off.
-	wait 1.
-	set sasmode to "NORMAL".	
+	ConfigureChillMode.	
 	wait until orbit:Body = Kerbin.
-	reboot.
 	}
 else if orbit:body = Minmus and fuelPercent() <= 80 {
 	// get into a 10km equatorial orbit
 	if status = "LANDED" {
 		print " (( Waiting for fuel loading )) ".
 		wait until fuelPercent() > 99.
-		reboot.
 		}
-	print "In orbit of Minmus with no fuel, getting ready to land.".
-	if orbit:apoapsis < 0 {
+	else if altitude < 20 and ship:velocity:surface:mag < 5 {
+		print " (( Are we bouncing after physics load? ))".
+		gear on.
+		wait until status = "LANDED".
+		}
+	else if fuelPercent() = 0 {
+		print " (( out of fuel ))  ".
+		wait until fuelPercent() > 2.
+		}
+	else if orbit:apoapsis < 0 {
+		print " (( On hyperbolic trajectory past Minmus )) ".
 		if orbit:periapsis > 7000 {
 			print " - lowering periapsis".
 			sas on.
@@ -149,35 +156,32 @@ else if orbit:body = Minmus and fuelPercent() <= 80 {
 		else {
 			print " - capturing from insertion to orbit".
 			run "capture_from_insertion".
-			print "** Waiting for manoeuvre **".
-			wait until not HasNode.
+			print " (( Waiting for manoeuvre )) ".
+			WaitForNode().
 			}
-		reboot.
 		}
 	else if round(orbit:inclination) <> 0 {
 		print " - altering inclination to 0".
 		AlterInclination(0).
-		print " ** Waiting for manoeuvre ** ".
-		wait until not HasNode.
-		reboot.
+		print " (( Waiting for manoeuvre )) ".
+		WaitForNode().
 		}
 	else if round(orbit:apoapsis/1000) <> 10 {
 		print " - altering apoapsis to 10km".
 		AlterApoapsis(10000).
-		print "** Waiting for manoeuvre **".
-		wait until not HasNode.
-		reboot.
+		print " (( Waiting for manoeuvre )) ".
+		WaitForNode().
 		}
 	else if round(orbit:periapsis/1000) <> 10 {
 		print " - altering periapsis to 10km".
 		AlterPeriapsis(10000).
-		print "** Waiting for manoeuvre **".
-		wait until not HasNode.
-		reboot.
+		print " (( Waiting for manoeuvre )) ".
+		WaitForNode().
 		}
 	else {
 		set target to Vessel("Minmus Fuel Base").
-		print " (( Ready to perform landing ))".
+		print " ** Please land at the fuel base ** ".
+		wait until ship:velocity:surface:mag < 0.1.
 		}
 	}
 else if orbit:body = Minmus and fuelPercent() > 80 {
@@ -187,16 +191,11 @@ else if orbit:body = Minmus and fuelPercent() > 80 {
 		print " ** Press 6 to launch ** ".
 		wait until AG6.
 		runpath("launch.ks", 20000).
-		reboot.
 		}
 	else if orbit:HasNextPatch and orbit:NextPatch:Body = Kerbin {
 		print " (( Chilling out until Kerbin SOI )) ".
-		rcs off.
-		sas on.
-		wait 0.1.
-		set sasmode to "NORMAL". // Ensure solar panels are lit
+		ConfigureChillMode().
 		wait until orbit:body = Kerbin.
-		reboot.
 		}
 	else if round(orbit:apoapsis/1000) < 8 {
 		print " ** raising apoapsis to 8km ** ".
@@ -206,24 +205,21 @@ else if orbit:body = Minmus and fuelPercent() > 80 {
 		wait until round(orbit:apoapsis/1000) >= 8.
 		set throttle to 0.
 		unlock steering.
-		reboot.
 		}
 	else if round(orbit:periapsis/1000) < 20 {
 		print " ** raising periapsis to 20km ** ".
 		AlterPeriapsis(20000).
-		wait until not HasNode.
-		reboot.
+		WaitForNode().
 		}
 	else if round(orbit:apoapsis/1000) < 20 {
 		print " ** raising apoapsis to 20km ** ".
 		AlterApoapsis(20000).
 		wait until not HasNode.
-		reboot.
 		}
 	else {
 		print " (( FIXME - plot return from Minmus to Kerbin with 36km periapsis )) ".
 		wait until orbit:HasNextPatch.
-		reboot.
+		wait 10.
 		}
 	}
 else if orbit:body = Minmus {
@@ -232,34 +228,25 @@ else if orbit:body = Minmus {
 else if orbit:body = Kerbin and status = "PRELAUNCH" {
 		print "Ready to launch! Press 6 to launch.".
 		wait until AG6.
-		runpath("launch.ks", 130000).
+		set lp to Lexicon("altitude", 80000, "inclination" , 0, "launch pitch", 75, "time to apoapsis", 50).
+		runpath("launch_cta.ks", lp).
 		stage.
-		reboot.
 	}
-else if orbit:body = Kerbin and (fuelPercent() > 20 or fuel:amount < minmusTransferFuel) {
-	print "Kerbin, with fuel.".
-	if orbit:HasNextPatch and orbit:NextPatch:Body = Minmus {
+else if orbit:body = Kerbin and (not orbit:HasNextPatch) and (fuelPercent() > 20) {
+	print "Kerbin.".
+	if orbit:HasNextPatch and orbit:NextPatchEta < eta:Periapsis and orbit:NextPatch:Body = Minmus {
 		print " (( Chilling out until Minmus SOI )) ".
-		rcs off.
-		sas on.
-		wait 0.1.
-		set sasmode to "NORMAL".
+		ConfigureChillMode().
 		wait until orbit:Body = Minmus.
-		reboot.
 		}
-	if orbit:HasNextPatch and orbit:NextPatch:Body = Mun {
+	if orbit:HasNextPatch and orbit:NextPatchEta < eta:Periapsis and orbit:NextPatch:Body = Mun {
 		print " (( Chilling out until Mun SOI )) ".
-		rcs off.
-		sas on.
-		wait 0.1.
-		set sasmode to "NORMAL".
+		ConfigureChillMode().
 		wait until orbit:Body = Mun.
-		reboot.
 		}
 	else if round(orbit:inclination) <> 0 {
 		print " - altering inclination to 0".
 		AlterInclination(0).
-		reboot.
 		}
 	else if orbit:apoapsis > 40000000 {
 		print " - braking from high speed".
@@ -277,47 +264,102 @@ else if orbit:body = Kerbin and (fuelPercent() > 20 or fuel:amount < minmusTrans
 		print " - fine aerobraking phase".
 		ConfigureForAerobraking(45000).
 		}
-	else if orbit:periapsis < 100000 {
+	else if orbit:periapsis < 71000 {
 		print " - raise periapsis out of atmosphere".
-		AlterPeriapsis(100000).
+		AlterPeriapsis(80000).
+		}
+	else if orbit:apoapsis > 85000 and abs(orbit:apoapsis - orbit:periapsis) > 1000 {
+		print " - circularise orbit".
+		create_circularise_node(false).
 		}
 	else {
 		print " - rendezvous phase".
-		set target to Vessel("Kerbin Fuel Station").
-		print " (( Ready to perform rendezvous ))".
+		set target to Vessel("Kerbin Fuel Depot").
+		print " ** Over to you to perform rendezvous ** ".
+		wait until false.
 		}
-	reboot.
 	}
 else if orbit:body = Kerbin {
 	print "Orbiting Kerbin, heading for Minmus".
-	set target to Minmus.
+	if orbit:HasNextPatch and orbit:NextPatch:Body = Minmus {
+		print " (( Chilling out until Minmus )) ".
+		ConfigureChillMode().
+		wait until orbit:body = Minmus.
+		}
+	if orbit:HasNextPatch and orbit:NextPatch:Body = Mun {
+		print " (( Chilling out until Mun )) ".
+		ConfigureChillMode().
+		wait until orbit:body = Mun.
+		}
+	if orbit:apoapsis > 40_000_000 {
+		print " ** Mid-course Correction ** ".
+		runpath("midcourse_correction.ks").
+		}
 	if orbit:periapsis < body:atm:height {
 		print " ** Raising periapsis out of atmosphere. You might want to take over.".
 		AlterPeriapsis(80000).
 		wait until orbit:periapsis > body:atm:height.
-		reboot.
 		}
-	if orbit:apoapsis < 1000000 {
+	else if fuelPercent() < 2 {
+		print " - out of fuel".
+		sas on.
+		wait 0.1.
+		set sasmode to "STABILITY".
+		print " ** waiting for refuelling operation ** ".
+		set docked to false.
+		until docked {
+			list elements in elementList.
+			clearscreen.
+			print " ** Waiting for refuelling to start ** ".
+			print "Current Elements:".
+			print elementList.
+			if elementList:length > 1 {
+				set docked to true.
+				print "Someone docked!".
+				}
+			wait 60.
+			}
+		until not docked {
+			list elements in elementList.
+			clearscreen.
+			print " ** Waiting for refuelling to end ** ".
+			print "Current Elements:".
+			print elementList.
+			if elementList:length = 1 {
+				set docked to false.
+				print "They're gone!".
+				}
+			wait 60.
+			}
+		}
+	if orbit:apoapsis < 2000000 {
 		print " ** in-plane component of rendezvous **".
+		set target to Minmus.
 		run Rendezvous.
-		clearscreen.
-		print "** Waiting for manoeuvre ** ".
-		wait until not HasNode.
-		reboot.
+		if orbit:HasNextPatch and orbit:NextPatch:Body = Mun {
+			print " (( Mun is in the way, waiting a couple of orbits )) ".
+			remove nextnode.
+			AddAlarm("Raw", time:seconds + orbit:period, "Planning Rendezvous", ship:name + " is headed to Minmus. Mun was in the way, maybe now it's not").
+			wait orbit:period.
+			}
+		else {
+			wait 2.
+			clearscreen.
+			print "** Waiting for manoeuvre ** ".
+			rcs on.
+			sas off.
+			WaitForNode().
+			}
 		}
-	if orbit:HasNextPatch and orbit:NextPatch:Body = Minmus {
-		print " ** Chilling out until Minmus ** ".
-		wait until orbit:body = Minmus.
-		reboot.
-		}
-	if orbit:apoapsis > 1000000 {
-		print " ** Waiting for manual mid-course correction ** ".
-		print " ** FIXME: please add mid-course correction to intercept Minmus ** ".
+	else {
+		print " ** Not sure what's happening, please arrange a rendezvous with Minmus ** ".
 		wait until orbit:HasNextPatch.
-		reboot.
 		}
 	}
-else if orbit:body = Kerbin {
-	print "In orbit of Kerbin, but what is happening?".
+else {
+	print "What is happening? Please get me to Kerbin or Mun SOI".
+	ConfigureChillMode().
+	wait until orbit:HasNextPatch.
 	}
+wait 5.
 reboot.
