@@ -351,8 +351,8 @@ function ModulesMatching {
 	parameter comparator.
 	set modulesOfInterest to List().
 	for part in ship:parts {
-		for moduleName in part:modules {
-			set module to part:GetModule(moduleName).
+		for idx in range(0, part:modules:length) {
+			set module to part:GetModuleByIndex(idx).
 			if comparator(module) {
 				modulesOfInterest:add(module).
 				}
