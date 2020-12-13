@@ -237,16 +237,52 @@ function WaitForAlarm {
 		}
 	}
 
+function AlignForNode {
+	parameter myNode.
+	parameter sunwardVector is sun:position.
+
+	set NAVMODE to "Orbit".
+	
+	if sas and (sasmode = "PROGRADE") {
+		lock burnvector to prograde:vector.
+		}
+	else if sas and (sasmode = "RETROGRADE") {
+		lock burnvector to retrograde:vector.
+		}
+	else if sas and (sasmode = "MANEUVER") {
+		lock burnvector to myNode:deltav.
+		}
+	else {
+		sas off.
+		lock burnvector to myNode:deltav.
+		}
+	lock burnIsAligned to (vang(burnvector(), ship:facing:vector) < 0.50) and (ship:angularvel:mag < 0.01) or (burnvector():mag < 0.001).
+
+	if sas {
+		unlock steering.
+	}
+	else {
+		set steeringIntent to LookDirUp(burnvector, sunwardVector).
+		lock steering to steeringIntent.
+		}
+	wait until burnIsAligned.
+	set returnVector to burnvector.
+	unlock steering.
+	unlock burnvector.
+	return returnVector.
+	}
+
 function WaitForNode {
 	parameter sunwardVector is sun:position.
 	// if the next node is due soon enough, perform it otherwise sit here waiting
+	set burnvector to AlignForNode(nextNode, sunwardVector).
 	lock acceleration to ship:maxthrust / ship:mass.
-	lock burnDuration to NextNode:burnvector:mag / acceleration.
+	lock burnDuration to burnvector:mag / acceleration.
 	lock burnETA to NextNode:eta - (burnDuration/2 + 1).
 	set soonest to NextKACAlarm().
 
-	until burnETA <= 300 {
-		set warpEndTime to time:seconds + soonest:remaining.
+	until burnETA <= 800 {
+		set warpEndTime to time:seconds + min(soonest:remaining, burnETA).
 		print "Next manoeuvre in " + TimeString(burnETA).
 		print "Next alarm in " + TimeString(soonest:remaining).
 		lock steering to LookDirUp(NextNode:burnvector, SunwardVector).
@@ -256,7 +292,7 @@ function WaitForNode {
 			}
 		until NextAlarmIsMine() {
 			// FIXME - it would be nice to switch to the vessel that the next alarm applies to
-			print "waiting for you to handle next alarm.".
+			print " ** Waiting for you to handle next alarm, which is for another vessel **".
 			wait 60.
 			}
 		}
@@ -283,35 +319,22 @@ function ExecuteNextNode {
 	parameter sunwardVector is sun:position.
 	set myNode to nextnode.
 	set NAVMODE to "Orbit".
-	if sas and (sasmode = "PROGRADE") {
-		lock burnvector to prograde:vector.
-		}
-	else if sas and (sasmode = "RETROGRADE") {
-		lock burnvector to retrograde:vector.
-		}
-	else {
-		sas off.
-		lock burnvector to myNode:deltav.
-		}
-	lock acceleration to ship:maxthrust / ship:mass.
-	lock burnDuration to burnvector:mag / acceleration.
-	lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 1). 
-	lock burnIsAligned to (vang(burnvector, ship:facing:vector) < 0.50) or (burnvector:mag < 0.001).
+	set oldSAS to sas.
+	sas off.
 
-	if sas {
-		unlock steering.
-		wait 0.5. // SAS turns on "stability" mode by default.
-		if NextNode:deltav:mag > 0.01 and not (sasmode = "PROGRADE" or sasmode = "RETROGRADE") { set sasmode to "MANEUVER". }.
-		}
-	else {
-		lock steering to LookDirUp(burnvector, sunwardVector).
-		}
-	wait until burnIsAligned.
+	AlignForNode(myNode, sunwardVector).
+	lock burnvector to myNode:burnvector.
+	lock steering to burnvector.
+	lock acceleration to ship:maxthrust / ship:mass.
+	lock burnDuration to burnvector():mag / acceleration.
+	lock guardTime to time:seconds + myNode:eta - (burnDuration/2 + 1). 
+	lock burnIsAligned to (vang(burnvector(), ship:facing:vector) < 0.50) or (burnvector():mag < 0.001).
 
 	// Warp to 10 minute mark to realign.
-	if guardTime - time:seconds > 600 {
+	set guardTimeETA to guardTime - time:seconds.
+	if guardTimeETA > 600 {
 		print "Warping to realignment point.".
-		set alignTime to time:seconds + myNode:eta - 600.
+		set alignTime to guardTime - 600.
 		WarpToTime(alignTime).
 		wait until burnIsAligned.
 		}
@@ -319,6 +342,7 @@ function ExecuteNextNode {
 	// Warp to the manoeuvre node
 	print "Warping to node.".
 	WarpToTime(guardTime).
+	wait until burnIsAligned.
 
 	print "Performing manoeuvre.".
 	wait until time:seconds > guardTime.
@@ -328,22 +352,31 @@ function ExecuteNextNode {
 	lock throttle to desiredThrottle.
 	wait until burnIsAligned.
 	until done {
-		if burnvector:mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
+		if burnvector():mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
 			set done to true.
+			set throttleIntent to 0.
 			set throttleSetting to 0.
 			}
 		else {
-			set throttleIntent to burnvector:mag/acceleration.
+			set throttleIntent to burnvector():mag/acceleration.
 			set throttleSetting to min(throttleIntent, 1).
 			set desiredThrottle to throttleSetting.
 			}
-		wait 0.1.
+		print "Throttle Intent: " + round(throttleIntent,2) + "    " at (0,14).
+		print "Throttle: " + round(throttleSetting,2) + "    " at (0,15).
 		}
 
 	print "Manoeuvre completed.".
 	set desiredThrottle to 0.
 	SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
-	unlock all.
+	unlock steering.
+	unlock throttle.
+	unlock burnIsAligned.
+	unlock guardTime.
+	unlock burnDuration.
+	unlock acceleration.
+	unlock burnvector.
+	set sas to oldSAS.
 	remove nextnode.
 	}
 
