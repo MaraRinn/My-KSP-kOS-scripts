@@ -241,7 +241,7 @@ function AlterSMA {
 	}
 
 function AlterInclination {
-	parameter newInclination.
+	parameter newInclination is 0.
 	parameter atHighestNode is true. // highest ¬nearest
 
 	local taan is TrueAnomalyOfAscendingNode().
@@ -447,6 +447,13 @@ function TrueAnomalyFromEccentricAnomaly {
 		set theta to theta + 360.
 		}
 	return theta.
+	}
+
+function NormalVectorFromOrbit {
+	parameter orbit is ship:orbit.
+
+	set normal to VectorCrossProduct(orbit:Position:Normalized, orbit:Velocity:orbit:Normalized).
+	return normal.
 	}
 
 function H {
