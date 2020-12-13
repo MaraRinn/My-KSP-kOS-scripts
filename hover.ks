@@ -1,19 +1,31 @@
 parameter desiredAltitude is 100.
 
+// Hovers the rocket if possible.
+// Will brake vertical speed to hover at the appropriate height.
+// Currently does not cancel horizontal speed.
+// While hovering, activate gear to descend.
+// While descending, activate gear to return to hovering at the previous altitude.
+// While descending, activate brakes to return to hovering at the current altitude.
+// Activating brakes is also supposed to cancel horizontal velocity but we're not there yet.
+//
+// The script controls steering and throttle, you can activate RCS to alter horizontal velocity.
+//
+// NB: by "altitude" we actually mean "height above terrain"
+
+set RUNMODE_HOVER to 1.
+set RUNMODE_DESCEND to 2.
+set RUNMODE_END to 0.
+
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0. // Stop throttle resetting to 50%
 set my_throttle to 0.
 lock throttle to my_throttle.
 rcs on.
 set FLEVEL to STAGE:LIQUIDFUEL.
-set runmode to 1.
+set runmode to RUNMODE_HOVER.
 set cancelHorizontal to false.
 sas off.
 set steeringVec to up:vector.
 lock steering to LookDirUp(steeringVec, ship:North:Vector).
-
-set RUNMODE_HOVER to 1.
-set RUNMODE_DESCEND to 2.
-set RUNMODE_END to 0.
 
 set East to VCRS(Up:Vector, North:Vector).
 set NorthArrow to VecDraw(V(0,0,0), North:Vector * 20, blue, "N", 1, true, 1).
@@ -83,12 +95,12 @@ on GEAR {
 	preserve.
 	if gear {
 		print "Gear lowered".
-		set runmode to 2.
+		set runmode to RUNMODE_DESCEND.
 		brakes off.
 	}
 	else {
 		print "Gear raised".
-		set runmode to 1.
+		set runmode to RUNMODE_HOVER.
 		brakes off.
 		}
 	}

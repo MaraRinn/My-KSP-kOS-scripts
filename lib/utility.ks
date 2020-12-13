@@ -10,16 +10,40 @@ function TimeString {
 	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
 	}
 
-function terrainHeight {
-	if body = minmus {
-		return 5800.
+function DisplayValues {
+	parameter readings.
+	parameter row is 1.
+	set maxLabelWidth to 0.
+	set maxDataWidth to 0.
+	set rightMargin to 0.
+	// Calculate column widths
+	for item in readings:keys {
+		if item:length > maxLabelWidth {
+			set maxLabelWidth to item:length.
+			}
+		set valueString to readings[item]:ToString.
+		if valueString:length > maxDataWidth {
+			set maxDataWidth to valueString:length.
+			}
 		}
-	else if body = ike {
-		return 12800.
+	set rightMargin to terminal:width - maxLabelWidth - maxDataWidth - 2.
+	// Now display key/value pairs
+	for item in readings:keys {
+		set valueString to readings[item]:ToString.
+		print item:PadRight(maxLabelWidth) + "  " + valueString:PadLeft(maxDataWidth) + " ":PadLeft(rightMargin) at (0,row).
+		set row to row + 1.
 		}
-	else if body = mun {
-		return 7100.
-		}
-	return 0.
 	}
 
+function VectorToCompassAngle {
+	parameter V.
+	parameter subject is ship.
+	set upVec to subject:up:vector.
+	set northVec to subject:north:vector.
+	set eastVec to VectorCrossProduct(upVec, northVec).
+	set velEast to VDOT(V, eastVec).
+	set velNorth to VDOT(V, northVec).
+	set compass to arctan2(velEast, velNorth).
+	if compass < 0 { set compass to compass + 360. }
+	return compass.
+	}

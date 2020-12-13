@@ -92,18 +92,6 @@ function BindAngleTo360 {
 	return angle.
 }
 
-function TimeString {
-	declare parameter secondsToDisplay.
-	
-	set daysValue to floor(secondsToDisplay / (3600 * 6)).
-	set afterDays to secondsToDisplay - (daysValue * 3600 * 6).
-	set hoursValue to floor(afterDays / 3600).
-	set afterHours to afterDays - (hoursValue * 3600).
-	set minutesValue to floor(afterHours / 60).
-	set seconds to floor(afterHours - (minutesValue * 60)).
-	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
-	}
-
 function TimeToNearestNode {
 	declare parameter myOrbit is Orbit.
 
@@ -178,7 +166,7 @@ function AlterApoapsis {
 	parameter newApoapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
-	parameter dvLimit is 0.
+	parameter maxdv is 0.
 
 	set oldPeriapsisRadius to myOrbit:Periapsis + myOrbit:Body:Radius.
 	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
@@ -188,21 +176,24 @@ function AlterApoapsis {
 	set newOrbitSpeedAtPeriapsis to velocityAtR(oldPeriapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtPeriapsis - oldOrbitSpeedAtPeriapsis.
-	if dvLimit > 0 and deltaV > dvLimit {
-		set deltaV to dvLimit.
-		}
-
-	if myOrbit:apoapsis < 0 {
-		set timeToPeriapsis to eta:periapsis.
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
 		}
 	else {
+	if myOrbit:body = Orbit:body {
+		set timeToPeriapsis to ETA:Periapsis.
+		}
+	else if (myOrbit:Eccentricity <= 1) {
 		set angleToPeriapsis to 360 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 		if angleToPeriapsis < 0 {
 			set angleToPeriapsis to angleToPeriapsis + 360.
 			}
 		set timeToPeriapsis to angleToPeriapsis * (myOrbit:Period / 360).
 		}
-
+	else {
+		print "FIXME - Can't calculate periapsis for hyperbolic orbits yet".
+		return false.
+		}
 	set nodeTime to timeToPeriapsis + timeOfInterest.
 	set newNode to node(nodeTime, 0, 0, deltaV).
 	add newNode.
@@ -213,7 +204,7 @@ function AlterPeriapsis {
 	parameter newPeriapsis.
 	parameter myOrbit is Orbit.
 	parameter timeOfInterest is time:seconds.
-	parameter dvLimit is 0.
+	parameter maxdv is 0.
 
 	set oldApoapsisRadius to myOrbit:Apoapsis + myOrbit:Body:Radius.
 	set oldSemiMajorAxis to myOrbit:SemiMajorAxis.
@@ -223,10 +214,9 @@ function AlterPeriapsis {
 	set newOrbitSpeedAtApoapsis to velocityAtR(oldApoapsisRadius, newSemiMajorAxis, myOrbit:Body:Mu).
 
 	set deltaV to newOrbitSpeedAtApoapsis - oldOrbitSpeedAtApoapsis.
-	if dvLimit > 0 and deltaV > dvLimit {
-		set deltaV to dvLimit.
+	if maxdv > 0 and deltaV > maxdv {
+		set deltaV to maxdv.
 		}
-
 	set angleToApoapsis to 180 - MeanAnomalyFromOrbit(myOrbit, timeOfInterest).
 	if angleToApoapsis < 0 {
 		set angleToApoapsis to angleToApoapsis + 360.
@@ -262,7 +252,7 @@ function AlterSMA {
 	}
 
 function AlterInclination {
-	parameter newInclination.
+	parameter newInclination is 0.
 	parameter atHighestNode is true. // highest ¬nearest
 	parameter myOrbit is ship:orbit.
 
@@ -271,13 +261,14 @@ function AlterInclination {
 	local ttdn is TimeToDescendingNode().
 	local ttan is TimeToAscendingNode().
 	local timeToNode is 0.
+	local dtheta is newInclination - orbit:inclination.
 
 	set dTheta to newInclination - myOrbit:inclination.
 	if not atHighestNode {
 		// Use closest node
 		if ttdn < ttan {
 			set timeToNode to ttdn.
-			set dTheta to -dTheta.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -287,7 +278,7 @@ function AlterInclination {
 		// Use highest node
 		if orbit:ArgumentOfPeriapsis < 90 or orbit:ArgumentOfPeriapsis > 270 {
 			set timeToNode to ttdn.
-			set dTheta to -dTheta.
+			set dtheta to -dtheta.
 			}
 		else {
 			set timeToNode to ttan.
@@ -471,6 +462,13 @@ function TrueAnomalyFromEccentricAnomaly {
 	return theta.
 	}
 
+function NormalVectorFromOrbit {
+	parameter orbit is ship:orbit.
+
+	set normal to VectorCrossProduct(orbit:Position:Normalized, orbit:Velocity:orbit:Normalized).
+	return normal.
+	}
+
 function H {
 	declare parameter R.
 	declare parameter Q.
@@ -537,9 +535,9 @@ function MapVectorToSpace{
 	parameter velocityVector.
 
 	// Remembering KSP is left-handed
-	parameter Vp is velocityVector. // prograde vector
-	parameter Vn is VectorCrossProduct(positionVector, velocityVector). // normal vector
-	parameter Vr is VectorCrossProduct(Vp, Vn). // radial vector
+	set Vp to velocityVector. // prograde vector
+	set Vn to VectorCrossProduct(positionVector, velocityVector). // normal vector
+	set Vr to VectorCrossProduct(Vp, Vn). // radial vector
 
 	set Np to vDot(dV, Vp) / Vp:mag.
 	set Nn to vDot(dV, Vn) / Vn:mag.

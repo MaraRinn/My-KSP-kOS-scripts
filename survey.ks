@@ -1,7 +1,9 @@
 runoncepath("orbital_mechanics").
-
+runoncepath("lib/vessel_operations").
 set Ship:Control:PilotMainThrottle to 0.
-set deploymentComplete to false.
+set throttleSetting to 0.
+lock throttle to throttleSetting.
+lock sunwardVector to sun:position.
 
 list resources in resList.
 for res in resList {
@@ -10,27 +12,54 @@ for res in resList {
 		}
 	}
 
-on Abort {
-	set deploymentComplete to true.
+function HasDecoupler {
+	set part to core:part.
+	set decouplerFound to false.
+	until decouplerFound {
+		set part to part:parent.
+		for module in part:modules {
+			if module:matchespattern("decouple"){
+				set decouplerFound to true.
+				}
+			}
+		if not part:HasParent { break. }
+		}
+	return decouplerFound.
 	}
 
-function Deploy {
-	panels on.
-	set ship:name to body:name + " " + core:tag.
+function FarEnoughAway {
+	list targets in thingsInSpace.
+	set enoughRoomToDeploy to true.
+	for thing in thingsInSpace {
+		if thing:distance < 20 {
+			set enoughRoomToDeploy to false.
+			}
+		}
+	return enoughRoomToDeploy.
+	}
 
-	set engineFound to false.
+function ActivateEngine {
 	set part to core:part.
+	set engineFound to false.
 	until engineFound {
 		set part to part:parent.
 		for module in part:modules {
 			if module:matchespattern("engine"){
 				set enginePart to part.
 				set engineModule to part:GetModule(module).
-				engineModule:DoAction("activate engine", true).
 				set engineFound to true.
 				}
 			}
 		}
+	engineModule:DoAction("activate engine", true).
+	}
+
+function Deploy {
+	set kUniverse:ActiveVessel to ship.
+	set kUniverse:timeWarp:Warp to 0.
+	panels on.
+	set ship:name to body:name + " " + core:tag.
+
 	for part in ship:parts {
 		for moduleName in part:modules {
 			set module to part:getModule(moduleName).
@@ -44,44 +73,48 @@ function Deploy {
 		}
 	}
 
-function AdjustOrbit {
-	set surveyAltitude to max( max(body:radius / 10, 25000), BODY:ATM:HEIGHT) + 1000.
-	set dirty to false.
+function OrbitGood {
+	// See https://wiki.kerbalspaceprogram.com/wiki/M700_Survey_Scanner#Scanning_requirements
+	// for actual limits. Being conservative here
+	set surveyAltitude to min(body:radius * 4, 1000000).
+	print "Survey altitude: " + surveyAltitude.
+	print "Inclination:     " + round(orbit:inclination).
+	print "Periapsis:       " + round(orbit:periapsis).
+	print "Apoapsis:        " + round(orbit:apoapsis).
 	set maxAcceleration to maxThrust / mass.
 	set dvLimit to maxAcceleration * 120.
 	if round(orbit:inclination) <> 90 {
 		print "Setting polar orbit.".
 		AlterPlane(90 - orbit:inclination, time:seconds + eta:apoapsis).
-		return true.
+		return false.
 		}
 
-	if not withinError(orbit:periapsis, surveyAltitude, 0.01) {
+	if not WithinError(orbit:periapsis, surveyAltitude, 0.01) {
 		print "Adjusting periapsis to " + round(surveyAltitude) + "m".
 		set peNode to AlterPeriapsis(surveyAltitude, orbit, time:seconds, dvLimit).
 		if peNode:deltav:mag < 0.1 {
 			remove NextNode.
 			}
 		else {
-			return true.
+			return false.
 			}
 		}
-	if not withinError(orbit:apoapsis, surveyAltitude, 0.01) {
+	if not WithinError(orbit:apoapsis, surveyAltitude, 0.01) {
 		print "Adjusting apoapsis to " + round(surveyAltitude) + "m".
 		set apNode to AlterApoapsis(surveyAltitude, orbit, time:seconds, dvLimit).
 		if apNode:deltav:mag < 0.1 {
 			remove NextNode.
-			set adjustAP to false.
 			}
 		else {
-			return true.
+			return false.
 			}
 		}
-	return false.
+	return true.
 	}
 
 function PerformSurvey {
 	// Don't try performing a survey in the shade
-	if electric:amount < 500 { return false. }
+	if not CanSurvey("Communotron 16") { return false. }
 
 	print "Performing survey.".
 	set surveyEventName to "Perform Orbital Survey".
@@ -105,63 +138,36 @@ function PerformSurvey {
 	return false.
 	}
 
-function Detached {
-	set part to core:part.
-	set decouplerFound to false.
-	until decouplerFound {
-		set part to part:parent.
-		for module in part:modules {
-			if module:matchespattern("decouple"){
-				set decouplerPart to part.
-				set decouplerModule to part:GetModule(module).
-				print "Decoupler found".
-				set decouplerFound to true.
-				}
-			}
-		if not part:HasParent { break. }
-		}
-	return not decouplerFound.
+if HasNode {
+	print "Establishing Orbit.".
+	sas off.
+	WaitForNode().
+	sas on.
 	}
-
-function FarEnoughAway {
-	list targets in thingsInSpace.
-	set enoughRoomToDeploy to true.
-	for thing in thingsInSpace {
-		if thing:distance < 20 {
-			print "personal space please!".
-			set enoughRoomToDeploy to false.
-			}
-		}
-	return enoughRoomToDeploy.
+else if HasDecoupler {
+	print "Waiting for separation.".
+	wait until not HasDecoupler.
+	print "Decoupler decoupled.".
+	wait 5.
+	reboot. // FIXME kOS processors get confused over separation events
 	}
-
-print "Initial Boot.".
-until deploymentComplete {
-	wait 60.
-	print "Hello world.".
-	if Detached and FarEnoughAway {
-		Deploy.
-		set deploymentComplete to true.
+else if not FarEnoughAway {
+	print "Waiting for safe distance.".
+	ActivateEngine().
+	set throttleSetting to 0.1.
+	wait 5.
+	set throttleSetting to 0.
+	until FarEnoughAway {
+		wait 10.
 		}
+	Deploy().
 	}
-
-set deploymentComplete to false.
-set KUniverse:ActiveVessel to ship.
-
-print "Establishing Orbit.".
-until deploymentComplete {
-	if hasNode {
-		sas off.
-		run "execute_next_node".
-		sas on.
-		}
-	else if not AdjustOrbit {
-		set deploymentComplete to PerformSurvey.
-		}
-	else {
-		wait 60.
-		}
+else if not OrbitGood {
+	print "Orbital correction required.".
+	wait 5.
 	}
-
-print "Survey completed.".
-set core:bootfilename to "".
+else if PerformSurvey {
+	print "Survey completed.".
+	set core:bootfilename to "boot/simpleboot.ks".
+	}
+reboot.
