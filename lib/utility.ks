@@ -26,12 +26,59 @@ function DisplayValues {
 			set maxDataWidth to valueString:length.
 			}
 		}
-	set rightMargin to terminal:width - maxLabelWidth - maxDataWidth - 2.
+	set rightMargin to terminal:width - maxLabelWidth - maxDataWidth - 3.
 	// Now display key/value pairs
 	for item in readings:keys {
 		set valueString to readings[item]:ToString.
 		print item:PadRight(maxLabelWidth) + "  " + valueString:PadLeft(maxDataWidth) + " ":PadLeft(rightMargin) at (0,row).
 		set row to row + 1.
+		}
+	}
+
+function DisplayTable {
+	parameter table. // List (rows) of lists (columns)
+	parameter row is 1.
+	set columnCount to 0.
+	set columnWidth to List().
+	// Check widths
+	set rowIndex to 0.
+	for row in table {
+		set columnIndex to 0.
+		for column in row {
+			set dataLength to column:tostring:length.
+			if columnIndex >= columnWidth:length {
+				set columnCount to columnCount + 1.
+				columnWidth:add(dataLength).
+				}
+			else if dataLength > columnWidth[columnIndex] {
+				set columnWidth[columnIndex] to dataLength.
+				}
+			set columnIndex to columnIndex + 1.
+			}
+		set rowIndex to rowIndex + 1.
+		}
+	set tableWidth to 0.
+	for width in columnWidth {
+		set tableWidth to tableWidth + width + 2.
+		}
+	set rightMargin to terminal:Width - tableWidth.
+	// Print values
+	set rowIndex to 0.
+	for row in table {
+		set columnIndex to 0.
+		set columnOffset to 0.
+		for column in row {
+			if columnIndex = 0 {
+				print column:ToString:PadRight(columnWidth[columnIndex] + 2) at (0, rowIndex).
+				}
+			else {
+				print column:ToString:PadLeft(columnWidth[columnIndex] + 2) at (columnOffset, rowIndex).
+				}
+			set columnOffset to columnOffset + columnWidth[columnIndex] + 2.
+			set columnIndex to columnIndex + 1.
+			}
+		print " ":PadLeft(rightMargin) at (tableWidth, rowIndex).
+		set rowIndex to rowIndex + 1.
 		}
 	}
 
