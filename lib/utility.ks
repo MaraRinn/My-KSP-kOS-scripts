@@ -1,13 +1,30 @@
 function TimeString {
 	declare parameter secondsToDisplay.
-	
-	set daysValue to floor(secondsToDisplay / (3600 * 6)).
-	set afterDays to secondsToDisplay - (daysValue * 3600 * 6).
-	set hoursValue to floor(afterDays / 3600).
-	set afterHours to afterDays - (hoursValue * 3600).
-	set minutesValue to floor(afterHours / 60).
-	set seconds to floor(afterHours - (minutesValue * 60)).
-	return daysValue + "d " + hoursValue + "h " + minutesValue + "m " + seconds + "s".
+	set secondsPerMinute to 60.
+	set secondsPerHour to secondsPerMinute * 60.
+	set secondsPerDay to secondsPerHour * 6.   // Kerbin days
+	set secondsPerYear to secondsPerDay * 426. // Kerbin years
+	set displayString to "".
+
+	set yearsValue to floor(secondsToDisplay / secondsPerYear).
+	if yearsValue > 0 or displayString:length > 0 { set displayString to displayString + yearsValue + "y ". }
+	set afterYears to secondsToDisplay - (yearsValue * secondsPerYear).
+
+	set daysValue to floor(afterYears / secondsPerDay).
+	if daysValue > 0 or displayString:length > 0 { set displayString to displayString + daysValue + "d ". }
+	set afterDays to afterYears - (daysValue * secondsPerDay).
+
+	set hoursValue to floor(afterDays / secondsPerHour).
+	if hoursValue > 0 or displayString:length > 0 { set displayString to displayString + hoursValue + "h ". }
+	set afterHours to afterDays - (hoursValue * secondsPerHour).
+
+	set minutesValue to floor(afterHours / secondsPerMinute).
+	if minutesValue > 0 or displayString:length > 0 { set displayString to displayString + minutesValue + "m ". }
+	set afterMinutes to afterHours - (minutesValue * secondsPerMinute).
+
+	set seconds to floor(afterMinutes).
+	set displayString to displayString + seconds + "s".
+	return displayString.
 	}
 
 function DisplayValues {

@@ -481,6 +481,112 @@ function MinimumSafePeriapsis {
 	return max(bodyOfInterest:ATM:Height, TerrainHeight(bodyOfInterest)).
 }
 
+function ActiveEngines {
+	set ActiveEnginesList to List().
+	list Engines in EngineList.
+	for Engine in EngineList {
+		if Engine:HasSuffix("Ignition") and Engine:Ignition {
+			ActiveEnginesList:Add(Engine).
+			}
+		}
+	return ActiveEnginesList.
+	}
+
+function LimitThrust {
+	parameter Percentage is 1.
+	set ThrustLimiterSettings to Lexicon().
+	if ThrottleIntent < 0.01 {
+		set ThrottleIntent to ThrottleIntent * 100.
+		list Engines in MyEngines.
+		for ThisEngine in MyEngines {
+			if ThisEngine:HasModule("ModuleEnginesFX") {
+				set EngineModule to ThisEngine:GetModule("ModuleEnginesFX").
+				set ThrustLimiterSettings[EngineModule] to EngineModule:GetField("Thrust Limiter").
+				EngineModule:SetField("Thrust Limiter", 1).
+				}
+			else {
+				print "No thrust limiter on " + ThisEngine.
+				}
+			}
+		}
+	return ThrustLimiterSettings.
+	}
+
+function ResetThrust {
+	parameter ThrustLimiterSettings.
+	if ThrustLimiterSettings:Keys:Length > 0 {
+		for EngineModule in ThrustLimiterSettings:Keys {
+			set OldLimit to ThrustLimiterSettings[EngineModule].
+			EngineModule:SetField("Thrust Limiter", OldLimit).
+			}
+		}
+	}
+
+function SimpleProgradeRetrogradeSpeedTweak {
+	parameter dvIntentDelegate.
+
+	set deltavIntent to dvIntentDelegate().
+	set ThrottleDuration to 10.
+	until abs(deltavIntent) < 0.0001 {
+		set MaxAcceleration to (MaxThrust / Mass).
+		set AccelerationIntent to abs(deltavIntent/10).
+		set ThrottleIntent to AccelerationIntent / MaxAcceleration.
+		set ThrustLimiterSettings to Lexicon().
+		if ThrottleIntent < 0.01 {
+			set ThrustLimiterSettings to LimitThrust(1).
+			set ThrottleIntent to ThrottleIntent * 100.
+			}
+		sas on.
+		wait 0.1.
+		print "delta-v intent: " + round(deltavIntent, 4).
+		if deltavIntent > 0 {
+			set SASMode to "Prograde".
+			}
+		else {
+			set SASMode to "Retrograde".
+			}
+		wait 0.1.
+		wait until Ship:AngularVel:Mag < 0.002.
+		lock Throttle to ThrottleIntent.
+		wait ThrottleDuration.
+		set ThrottleIntent to 0.
+		unlock Throttle.
+		ResetThrust(ThrustLimiterSettings).
+		set NextdeltavIntent to dvIntentDelegate().
+		if (deltavIntent > 0) and (NextdeltavIntent < 0) or
+		   (deltavIntent < 0) and (NextdeltavIntent > 0) {
+		   set ThrottleDuration to ThrottleDuration/2.
+		   }
+		set deltavIntent to NextdeltavIntent.
+		}
+
+	}
+
+function TweakApoapsis {
+	parameter newApoapsis.
+
+	set deltavIntentDelegate to {
+		set Radius to Orbit:Body:Position:Mag.
+		set NewSMA to (Orbit:Periapsis + newApoapsis)/2 + Orbit:Body:Radius.
+		set NewSpeedIntent to velocityAtR(Radius, NewSMA, Orbit:Body:Mu).
+		return NewSpeedIntent - Velocity:Orbit:Mag.
+		}.
+	SimpleProgradeRetrogradeSpeedTweak(deltavIntentDelegate).
+	}
+
+function TweakPeriod {
+	parameter NewPeriod.
+
+	set NewSMA to SemiMajorAxisFromPeriod(NewPeriod).
+	set deltavIntentDelegate to {
+		set Radius to Orbit:Body:Position:Mag.
+		set NewSpeedIntent to
+			SpeedFromSemiMajorAxisRadiusMu( NewSMA, Radius, Orbit:Body:Mu ).
+		return NewSpeedIntent - Velocity:Orbit:Mag.
+		}.
+	SimpleProgradeRetrogradeSpeedTweak(deltavIntentDelegate).
+	}
+
 function ParameterDefault {
 	parameter SourceLexicon.
 	parameter KeyName.

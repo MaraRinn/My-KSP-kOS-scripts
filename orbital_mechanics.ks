@@ -39,9 +39,9 @@ function SemiMajorAxisFromRadiusSpeedMu {
 	}
 
 function SpeedFromSemiMajorAxisRadiusMu {
-	declare parameter sma.
-	declare parameter radius.
-	declare parameter mu.
+	declare parameter sma is Orbit:SemiMajorAxis.
+	declare parameter radius is Orbit:Body:Position:Mag.
+	declare parameter mu is Orbit:Body:Mu.
 	
 	set derivedSpeed to sqrt(mu * (2/radius - 1/sma)).
 	return derivedSpeed.
