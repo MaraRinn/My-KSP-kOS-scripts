@@ -493,16 +493,16 @@ function ActiveEngines {
 	}
 
 function LimitThrust {
-	parameter Percentage is 1.
-	set ThrustLimiterSettings to Lexicon().
+	parameter ThrustLimit is 1.
+	local ThrustLimiterSettings to Lexicon().
 	if ThrottleIntent < 0.01 {
 		set ThrottleIntent to ThrottleIntent * 100.
 		list Engines in MyEngines.
 		for ThisEngine in MyEngines {
 			if ThisEngine:HasModule("ModuleEnginesFX") {
-				set EngineModule to ThisEngine:GetModule("ModuleEnginesFX").
+				local EngineModule to ThisEngine:GetModule("ModuleEnginesFX").
 				set ThrustLimiterSettings[EngineModule] to EngineModule:GetField("Thrust Limiter").
-				EngineModule:SetField("Thrust Limiter", 1).
+				EngineModule:SetField("Thrust Limiter", ThrustLimit).
 				}
 			else {
 				print "No thrust limiter on " + ThisEngine.

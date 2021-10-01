@@ -131,9 +131,7 @@ function create_circularise_node {
 		}
 	set required_velocity_magnitude to sqrt(body:mu/r).
 
-	// Estimate speed of this ship at APOAPSIS
-	// https://gaming.stackexchange.com/questions/144030/how-do-i-calculate-necessary-delta-v-for-circularization-burn
-
+	// Estimate speed of this ship at circularisation point
 	set semi_major to (SHIP:APOAPSIS + SHIP:PERIAPSIS) / 2 + BODY:RADIUS.
 	set orbit_speed to sqrt(body:mu * (2/r - 1/semi_major)).
 
@@ -142,13 +140,13 @@ function create_circularise_node {
 	set dN to 0.
 	set dP to required_velocity_magnitude - orbit_speed.
 	if isApoapsis {
-		set nodeTime to eta:apoapsis + time:seconds.
+		set circulariseNodeTime to eta:apoapsis + time:seconds.
 		}
 	else {
-		set nodeTime to eta:periapsis + time:seconds.
+		set circulariseNodeTime to eta:periapsis + time:seconds.
 		}
 
-	set circularisation to node(nodeTime,dR, dN, dP).
+	set circularisation to node(circulariseNodeTime,dR, dN, dP).
 	add circularisation.
 }
 
@@ -227,15 +225,15 @@ function AlterSMA {
 
 	if newA < oldOrbit:SemiMajorAxis {
 		// Lower the apoapsis
-		set newApoapsis to 2 * newA - oldOrbit:periapsis - (2 * oldOrbit:body:radius).
-		print "New Ap: " + newApoapsis.
-		set newNode to AlterApoapsis(newApoapsis, oldOrbit, timeOfInterest).
+		set alterSmaNewApoapsis to 2 * newA - oldOrbit:periapsis - (2 * oldOrbit:body:radius).
+		print "New Ap: " + alterSmaNewApoapsis.
+		set newNode to AlterApoapsis(alterSmaNewApoapsis, oldOrbit, timeOfInterest).
 		}
 	else {
 		// Raise the periapsis
-		set newPeriapsis to 2 * newA - oldOrbit:apoapsis - (2 * oldOrbit:body:radius).
-		print "New Pe: " + newPeriapsis.
-		set newNode to AlterPeriapsis(newPeriapsis, oldOrbit, timeOfInterest).
+		set alterSmaNewPeriapsis to 2 * newA - oldOrbit:apoapsis - (2 * oldOrbit:body:radius).
+		print "New Pe: " + alterSmaNewPeriapsis.
+		set newNode to AlterPeriapsis(alterSmaNewPeriapsis, oldOrbit, timeOfInterest).
 		}
 	return newNode.
 	}

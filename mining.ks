@@ -192,8 +192,15 @@ until fuelFull {
 	if time:seconds > miningStarted and fuel:amount > startingFuelLevel {
 		set fuelRate to (fuel:amount - startingFuelLevel)/(time:seconds - miningStarted).
 		print "FUEL RATE:    " + round(fuelRate,2) at (0,9).
-		if fuel:amount < fuel:capacity {
+		if fuelFull  {
+			print "FULL." at (0,10).
+			}
+		else{
 			set thisFillEstimate to round((fuel:capacity - fuel:amount)/fuelRate).
+			fillTimeEstimate:add(thisFillEstimate).
+			if fillTimeEstimate:length > 20 {
+				fillTimeEstimate:remove(0).
+				}
 			if (fillTimeEstimate:length > 5) {
 				set runningSum to 0.
 				set fillIterator to fillTimeEstimate:Iterator.
@@ -202,14 +209,7 @@ until fuelFull {
 					}
 				set meanEstimate to runningSum / fillTimeEstimate:length.
 				}
-			fillTimeEstimate:add(thisFillEstimate).
-			if fillTimeEstimate:length > 20 {
-				fillTimeEstimate:remove(0).
-				}
-			print "TIME TO FILL: " + TimeString(thisFillEstimate) + "    " at (0,10).
-			}
-		else {
-			print "FULL." at (0,10).
+			print "TIME TO FILL: " + TimeString(meanEstimate) + "    " at (0,10).
 			}
 		}
 	
