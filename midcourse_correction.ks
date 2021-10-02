@@ -54,7 +54,7 @@ function PrepareMidcourseCorrection {
 		set NewNormalVector to NewPlaneNormal:Normalized * 100.
 		set MinmusVector to MinmusPosition:Normalized * 100.
 		set KerbinArrow to VecDraw(V(0,0,0), Kerbin:Position:Normalized * 100, White,   "Kerbin", 1, true, 0.2, true).
-		//set VelocityArrow to VecDraw(V(0,0,0), VelocityVector,               Yellow,  "Prograde", 1, true, 0.2, true).
+		set VelocityArrow to VecDraw(V(0,0,0), VelocityVector,                 Yellow,  "Prograde", 1, true, 0.2, true).
 		set ApoapsisArrow to VecDraw(V(0,0,0), ApoapsisVector,                 Yellow,  "Apoapsis", 1, true, 0.2, true).
 		set NormalArrow to VecDraw(V(0,0,0), OldNormalVector,                  Magenta, "Normal", 1, true, 0.2, true).
 		set MinmusArrow to VecDraw(V(0,0,0), MinmusVector,                     Cyan,    "Minmus", 1, true, 0.2, true).
