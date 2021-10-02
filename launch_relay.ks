@@ -36,10 +36,9 @@ function FindDecoupler {
 	set decouplerFound to false.
 	until decouplerFound {
 		set part to part:parent.
-		for module in part:modules {
-			if module:matchespattern("decouple"){
-				set decouplerPart to part.
-				set decouplerModule to part:GetModule(module).
+		for fd_module in part:modules {
+			if fd_module:matchespattern("decouple"){
+				set decouplerModule to part:GetModule(fd_module).
 				set decouplerFound to true.
 				}
 			}

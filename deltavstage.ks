@@ -45,8 +45,9 @@ FUNCTION deltaVstage
             ELSE SET mDotTotal TO mDotTotal + t / eng:ISP.
         }.
     }.
-    IF mDotTotal = 0 LOCAL avgIsp IS 0.
-    ELSE LOCAL avgIsp IS thrustTotal/mDotTotal.
+    LOCAL avgIsp is 0.
+    IF mDotTotal = 0 set avgIsp to 0.
+    ELSE set avgIsp to thrustTotal/mDotTotal.
 
     // deltaV calculation as Isp*g0*ln(m0/m1).
     LOCAL deltaV IS avgIsp*9.81*ln(SHIP:MASS / (SHIP:MASS-fuelMass)).

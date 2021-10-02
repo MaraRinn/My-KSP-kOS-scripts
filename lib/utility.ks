@@ -54,11 +54,11 @@ function DisplayValues {
 
 function DisplayTable {
 	parameter table. // List (rows) of lists (columns)
-	parameter row is 1.
+	parameter rowOffset is 0.
 	set columnCount to 0.
 	set columnWidth to List().
 	// Check widths
-	set rowIndex to 0.
+	set rowIndex to rowOffset.
 	for row in table {
 		set columnIndex to 0.
 		for column in row {
@@ -80,7 +80,7 @@ function DisplayTable {
 		}
 	set rightMargin to terminal:Width - tableWidth.
 	// Print values
-	set rowIndex to 0.
+	set rowIndex to rowOffset.
 	for row in table {
 		set columnIndex to 0.
 		set columnOffset to 0.

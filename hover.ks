@@ -1,4 +1,5 @@
 parameter desiredAltitude is 100.
+parameter heightAdjustment to 0.
 
 // Hovers the rocket if possible.
 // Will brake vertical speed to hover at the appropriate height.
@@ -32,12 +33,6 @@ set NorthArrow to VecDraw(V(0,0,0), North:Vector * 20, blue, "N", 1, true, 1).
 set UpArrow to VecDraw(V(0,0,0), Up:Vector * 20, blue, "U", 1, true, 1).
 set EastArrow to VecDraw(V(0,0,0), East * 20, blue, "E", 1, true, 1).
 
-if defined zeroAltitude {
-	set heightAdjustment to zeroAltitude.
-	}
-else {
-	set heightAdjustment to 0.
-	}
 lock groundDistance to ship:altitude - ship:geoposition:terrainHeight - heightAdjustment.
 lock g to ship:body:mu / (ship:body:radius + ship:altitude)^2.
 lock maxAcceleration to ship:maxThrust / ship:mass.

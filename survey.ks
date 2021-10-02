@@ -17,8 +17,8 @@ function HasDecoupler {
 	set decouplerFound to false.
 	until decouplerFound {
 		set part to part:parent.
-		for module in part:modules {
-			if module:matchespattern("decouple"){
+		for thisModule in part:modules {
+			if thisModule:matchespattern("decouple"){
 				set decouplerFound to true.
 				}
 			}
@@ -43,10 +43,9 @@ function ActivateEngine {
 	set engineFound to false.
 	until engineFound {
 		set part to part:parent.
-		for module in part:modules {
-			if module:matchespattern("engine"){
-				set enginePart to part.
-				set engineModule to part:GetModule(module).
+		for thisModule in part:modules {
+			if thisModule:matchespattern("engine"){
+				set engineModule to part:GetModule(thisModule).
 				set engineFound to true.
 				}
 			}
@@ -60,14 +59,14 @@ function Deploy {
 	panels on.
 	set ship:name to body:name + " " + core:tag.
 
-	for part in ship:parts {
-		for moduleName in part:modules {
-			set module to part:getModule(moduleName).
-			if module:HasAction("deploy scanner") {
-				module:DoAction("deploy scanner", true).
+	for thisPart in ship:parts {
+		for moduleName in thisPart:modules {
+			local thisModule to thisPart:getModule(moduleName).
+			if thisModule:HasAction("deploy scanner") {
+				thisModule:DoAction("deploy scanner", true).
 				}
-			if module:HasAction("extend antenna") {
-				module:DoAction("extend antenna", true).
+			if thisModule:HasAction("extend antenna") {
+				thisModule:DoAction("extend antenna", true).
 				}
 			}
 		}
