@@ -595,3 +595,20 @@ function ParameterDefault {
 	if not(SourceLexicon:HasKey(KeyName)) { return DefaultValue. }
 	return SourceLexicon[KeyName].
 	}
+
+// Aircraft stuff
+
+function PitchFromHorizon {
+	set upVector to ship:UP:vector.
+	set facingVector to ship:FACING:vector.
+	set zenithAngle to vectorAngle(facingVector, upVector).
+	set pitchAngle to 90 - zenithAngle.
+	return pitchAngle.
+}
+
+function YawFromProgradeFacing {
+	set progradeVector to ship:SrfPrograde:vector.
+	set facingVector to ship:Facing:Vector.
+	set yawAngle to vectorAngle(facingVector, progradeVector).
+	return yawAngle.
+}
