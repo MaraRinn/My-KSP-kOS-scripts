@@ -40,8 +40,7 @@ local Vrot is 150. // m/s at which to lift nose
 local minimumAltitude is ship:body:atm:height.
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
 lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
-local Runway90FlightPath is lookdirup(East, up:vector):vector.
-lock FlightPath to Runway90FlightPath.
+lock FlightPath to East. // KSC Runway 90
 local st is FlightPath.
 local throttleIntent is 1.
 
@@ -181,22 +180,22 @@ until orbit:periapsis > minimumAltitude {
     set st to lookdirup(FlightPath, ship:up:vector).
     set apThrottleIntent to apoapsisThrottleIntentPID:update(time:seconds, extraSpeed).
     set TTAthrottleIntent to TTAthrottlePID:update(time:seconds, eta:apoapsis).
-    set knowledge:apThrottleIntent to round(apThrottleIntent, 1).
-    set knowledge:TTAthrottleintent to round(TTAthrottleIntent, 1).
+    set knowledge:apThrottleIntent to round(apThrottleIntent, 2).
+    set knowledge:TTAthrottleintent to round(TTAthrottleIntent, 2).
     set throttleIntent to max(TTAthrottleIntent, apThrottleIntent).
     DisplayValues(knowledge).
     wait 0.
 }
 
 set knowledge:runmode to RUNMODE_COMPLETE.
-CollateKnowledge().
-DisplayValues(knowledge).
 unlock steering.
 unlock throttle.
-OpenCargoBay().
+CollateKnowledge().
+DisplayValues(knowledge).
 set ship:control:neutralize to true.
 create_circularise_node().
 ExecuteNextNode().
+OpenCargoBay().
 sas on.
 
 // PS: this guy is insane
