@@ -196,6 +196,8 @@ unlock throttle.
 OpenCargoBay().
 set ship:control:neutralize to true.
 create_circularise_node().
+ExecuteNextNode().
+sas on.
 
 // PS: this guy is insane
 // https://www.reddit.com/r/KerbalSpaceProgram/comments/3aezew/im_excited_to_show_my_latest_kos_project_a/csc07qo/

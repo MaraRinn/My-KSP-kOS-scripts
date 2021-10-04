@@ -43,7 +43,7 @@ function DisplayValues {
 			set maxDataWidth to valueString:length.
 			}
 		}
-	set rightMargin to terminal:width - maxLabelWidth - maxDataWidth - 3.
+	set rightMargin to max(terminal:width - maxLabelWidth - maxDataWidth - 3, 0).
 	// Now display key/value pairs
 	for item in readings:keys {
 		set valueString to readings[item]:ToString.
