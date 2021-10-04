@@ -2,12 +2,48 @@ runOncePath("lib/vessel_operations").
 runOncePath("lib/utility").
 runOncePath("orbital_mechanics").
 
+parameter desiredAltitude is 80000.
+
 local RUNMODE_TAKEOFF is "takeoff".
 local RUNMODE_ATMOSPHERE_TO_ORBIT is "10 degrees to orbit".
 local RUNMODE_RAISE_PERIAPSIS is "raise periapsis".
-local RUNMODE_RAISE_APOAPSIS is "raise apoapsis to orbital height".
+local RUNMODE_RAISE_APOAPSIS is "raise apoapsis".
 local RUNMODE_CIRCULARISE is "circularise orbit".
+local RUNMODE_COMPLETE is "completed".
+local knowledge is Lexicon().
 
+// What speed do we need to be doing right now to get to the intended apoapsis?
+lock desiredSMA to (desiredAltitude + SHIP:PERIAPSIS) / 2 + BODY:RADIUS.
+lock shipRadius to ship:altitude + ship:body:radius.
+lock desiredSpeed to velocityAtR(shipRadius, desiredSMA, body:mu).
+lock extraSpeed to desiredSpeed - ship:velocity:orbit:mag.
+
+local enginemodules is ModulesMatching(ModuleIsRapier@).
+local engines is List().
+for enginemodule in enginemodules {
+    local thisPart is enginemodule:part.
+    if engines:find(thisPart) < 0 {
+        engines:add(thisPart).
+    }
+}
+
+local cargomodules is ModulesMatching(ModuleIsCargoBay@).
+local cargobays is List().
+for cargomodule in cargomodules {
+    local thisPart is cargomodule:part.
+    if cargobays:find(thisPart) < 0 {
+        cargobays:add(thisPart).
+    }
+}
+
+local Vrot is 150. // m/s at which to lift nose
+local minimumAltitude is ship:body:atm:height.
+lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
+lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
+local Runway90FlightPath is lookdirup(East, up:vector):vector.
+lock FlightPath to Runway90FlightPath.
+local st is FlightPath.
+local throttleIntent is 1.
 
 function ModuleIsRapier {
     parameter thisModule.
@@ -30,42 +66,86 @@ function RapierThrust {
     return thisThrust.
 }
 
-local enginemodules is ModulesMatching(ModuleIsRapier@).
-local engines is List().
-for enginemodule in enginemodules {
-    local thisPart is enginemodule:part.
-    if engines:find(thisPart) < 0 {
-        engines:add(thisPart).
+function ModuleIsCargoBay {
+    parameter thisModule.
+    if thisModule:Name = "ModuleCargoBay" {
+        return True.
+    }
+    return False.
+}
+
+function OpenCargoBay {
+    for cargoPart in cargobays {
+        if cargoPart:hasModule("ModuleAnimateGeneric") {
+            local animationModule is cargoPart:getModule("ModuleAnimateGeneric").
+            if animationModule:hasEvent("open") {
+                animationModule:doEvent("open").
+            }
+        }
     }
 }
 
-local Vrot is 150. // m/s at which to lift nose
-local desiredAltitude is 80000.
-local desiredApoapsis is desiredAltitude + ship:body:radius.
-local minimumPeriapsis is ship:body:atm:height + ship:body:radius.
-lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
-lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
-set Runway90FlightPath to lookdirup(East, up:vector):vector.
+function CloseCargoBay{
+    for cargoPart in cargobays {
+        if cargoPart:hasModule("ModuleAnimateGeneric") {
+            local animationModule is cargoPart:getModule("ModuleAnimateGeneric").
+            if animationModule:hasEvent("close") {
+                animationModule:doEvent("close").
+            }
+        }
+    }
+}
+
+function maxAccelerationFunc {
+    if ship:maxthrust > 0 {
+        return ship:mass / ship:maxthrust.
+    }
+    return 0.
+}
+lock maxAcceleration to maxAccelerationFunc().
+
+function TotalThrust {
+    parameter ourEngines.
+    local accumulator is 0.
+    for thisEngine in ourEngines {
+        set accumulator to accumulator + RapierThrust(thisEngine).
+    }
+    return accumulator.
+}
+
+local previousTime is time:seconds.
+local previousSpeed is ship:velocity:orbit:mag.
+function CollateKnowledge {
+    set knowledge:thrust to round(TotalThrust(engines)).
+    set knowledge:timeToApoapsis to round(eta:apoapsis).
+    set knowledge:apoapsis to round(apoapsis).
+    set knowledge:periapsis to round(periapsis).
+    set knowledge:minimumAltitude to minimumAltitude.
+    set knowledge:desiredAltitude to desiredAltitude.
+    set knowledge:status to ship:status.
+    set knowledge:desiredSpeed to round(desiredSpeed).
+    set knowledge:extraSpeed to round(extraSpeed).
+    set knowledge:throttleIntent to round(throttleIntent,2).
+    set currentSpeed to ship:velocity:orbit:mag.
+    set currentTime to time:seconds.
+    set knowledge:acceleration to round((currentSpeed - previousSpeed)/(currentTime - previousTime), 1).
+    set previousSpeed to currentSpeed.
+    set previousTime to currentTime.
+}
 
 // Let's take off
 brakes off.
 sas off.
-lock FlightPath to Runway90FlightPath.
-set st to FlightPath.
+CloseCargoBay().
+set Ship:Control:PilotMainThrottle to 0.
 lock steering to st.
-set Ship:Control:PilotMainThrottle to 1.
+lock throttle to throttleIntent.
 if ship:status = "PRELAUNCH" or maxThrust = 0 {
     stage.
 }
 
 // On the runway, keep nose level until Vrot
-local knowledge is Lexicon().
-set knowledge:thrust to 0.
 set knowledge:runmode to RUNMODE_TAKEOFF.
-
-// While on runway, leave pitch and roll alone.
-// Use rudder to steer the plane down the runway
-
 
 // At Vrot ~ 150m/s lift the nose to 10 degrees above horizon
 when ship:velocity:surface:mag > Vrot or status="FLYING" then {
@@ -73,64 +153,49 @@ when ship:velocity:surface:mag > Vrot or status="FLYING" then {
     lock FlightPath to EastFlightPath.
 }
 
-// Stick to 10 degrees pitch until airbreathing engine thrust drops too low
 // When airspeed stops increasing, switch to closed engines
-when ship:status = "FLYING" and knowledge:thrust < 60 then {
+when ship:status = "FLYING" and knowledge:acceleration < 2 then {
     ag1 on.
+    lock FlightPath to ship:prograde:vector.
+    set knowledge:runmode to RUNMODE_RAISE_PERIAPSIS.
 }
 
 when ship:status = "FLYING" and ship:velocity:surface:mag > Vrot then {
     gear off.
 }
 
-// Keep going till apoapsis is out of atmosphere
-until apoapsis > minimumPeriapsis {
-    set knowledge:thrust to round(RapierThrust(engines[0])).
-    set knowledge:timeToApoapsis to round(eta:apoapsis).
-    set knowledge:apoapsis to round(apoapsis).
-    set knowledge:minimumPeriapsis to minimumPeriapsis.
-    set knowledge:status to ship:status.
+// Push apoapsis to desired altitude
+local apoapsisThrottleIntentPID is PIDLOOP(-0.1).
+set apoapsisThrottleIntentPID:setpoint to 1. // extra velocity required to reach apoapsis
+set apoapsisThrottleIntentPID:minOutput to 0.
+set apoapsisThrottleIntentPID:maxOutput to 1.
+
+local TTA is 30.
+local TTAthrottlePID is PIDLOOP(0.1).
+set TTAthrottlePID:setpoint to TTA.
+set TTAthrottlePID:minOutput to 0.
+set TTAthrottlePID:maxOutput to 1.
+
+until periapsis > minimumAltitude {
+    CollateKnowledge().
     set st to lookdirup(FlightPath, ship:up:vector).
+    set apThrottleIntent to apoapsisThrottleIntentPID:update(time:seconds, extraSpeed).
+    set TTAthrottleIntent to TTAthrottlePID:update(time:seconds, eta:apoapsis).
+    set knowledge:apThrottleIntent to round(apThrottleIntent, 1).
+    set knowledge:TTAthrottleintent to round(TTAthrottleIntent, 1).
+    set throttleIntent to max(TTAthrottleIntent, apThrottleIntent).
     DisplayValues(knowledge).
     wait 0.
 }
-unlock steering.
-unlock throttle.
-sas on.
-wait 0.
-set sasmode to "PROGRADE".
-set knowledge:runmode to RUNMODE_RAISE_PERIAPSIS.
 
-// Keep apoapsis 50s away until desired orbit is reached or throttle drops below 30%
-
-// I have no idea what I'm doing. My brilliant idea is to estimate what
-// the ship's velocity *should* be at this r if the apoapsis was the
-// target altitude.
-
-lock semi_major to (desiredapoapsis + SHIP:PERIAPSIS) / 2 + BODY:RADIUS.
-lock desiredSpeed to sqrt(body:mu * (2/r - 1/semi_major)).
-lock extraSpeed to desiredSpeed - ship:velocity:orbit:mag.
-
-until False {
-    set knowledge:thrust to round(RapierThrust(engines[0])).
-    set knowledge:timeToApoapsis to round(eta:apoapsis).
-    set knowledge:status to ship:status.
-    set knowledge:desiredSpeed to desiredSpeed.
-    set knowledge:extraSpeed to extraSpeed.
-    DisplayValues(knowledge).
-    wait 0.
-}
-unlock throttle.
-wait 0.
-set knowledge:runmode to RUNMODE_RAISE_APOAPSIS.
+set knowledge:runmode to RUNMODE_COMPLETE.
+CollateKnowledge().
 DisplayValues(knowledge).
-// Plot circularisation burn
-create_circularise_node().
-// Release controls
 unlock steering.
 unlock throttle.
+OpenCargoBay().
 set ship:control:neutralize to true.
-
+create_circularise_node().
 
 // PS: this guy is insane
 // https://www.reddit.com/r/KerbalSpaceProgram/comments/3aezew/im_excited_to_show_my_latest_kos_project_a/csc07qo/
