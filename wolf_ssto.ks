@@ -13,7 +13,7 @@ local RUNMODE_COMPLETE is "completed".
 local knowledge is Lexicon().
 
 // What speed do we need to be doing right now to get to the intended apoapsis?
-lock desiredSMA to (desiredAltitude + SHIP:PERIAPSIS) / 2 + BODY:RADIUS.
+lock desiredSMA to (desiredAltitude + ship:orbit:periapsis) / 2 + BODY:RADIUS.
 lock shipRadius to ship:altitude + ship:body:radius.
 lock desiredSpeed to velocityAtR(shipRadius, desiredSMA, body:mu).
 lock extraSpeed to desiredSpeed - ship:velocity:orbit:mag.
@@ -118,8 +118,8 @@ local previousSpeed is ship:velocity:orbit:mag.
 function CollateKnowledge {
     set knowledge:thrust to round(TotalThrust(engines)).
     set knowledge:timeToApoapsis to round(eta:apoapsis).
-    set knowledge:apoapsis to round(apoapsis).
-    set knowledge:periapsis to round(periapsis).
+    set knowledge:apoapsis to round(orbit:apoapsis).
+    set knowledge:periapsis to round(orbit:periapsis).
     set knowledge:minimumAltitude to minimumAltitude.
     set knowledge:desiredAltitude to desiredAltitude.
     set knowledge:status to ship:status.
@@ -176,7 +176,7 @@ set TTAthrottlePID:setpoint to TTA.
 set TTAthrottlePID:minOutput to 0.
 set TTAthrottlePID:maxOutput to 1.
 
-until periapsis > minimumAltitude {
+until orbit:periapsis > minimumAltitude {
     CollateKnowledge().
     set st to lookdirup(FlightPath, ship:up:vector).
     set apThrottleIntent to apoapsisThrottleIntentPID:update(time:seconds, extraSpeed).
