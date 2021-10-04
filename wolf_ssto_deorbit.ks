@@ -3,9 +3,11 @@ runOncePath("lib/orbital_mechanics").
 runOncePath("lib/vessel_operations").
 clearScreen.
 
-local deorbitAngle is 155.
+local deorbitAngle is 150.
 local deorbitAltitude is 30000.
 local reentryAttackAngle is 30.
+local cruiseSpeed is 170.
+local cruiseAltitude is 7000.
 
 local knowledge is Lexicon().
 local KSCLongitude is -74.5. // near enough
@@ -97,33 +99,81 @@ until deorbitReady {
     set knowledge:nodeseconds to round(secondsToDeorbit, 1).
     DisplayValues(knowledge).
     if secondsToDeorbit < 120 { set deorbitReady to True.}
+    if ship:orbit:periapsis < 40000 { set deorbitReady to True. }
 }
 
 CancelWarp().
 CloseCargoBay().
-local deorbitBurn is AlterPeriapsis(deorbitAltitude).
-set deorbitBurn:time to time:seconds + secondsToDeorbit.
-ExecuteNextNode().
+sas off.
+if (ship:orbit:periapsis > 40000) {
+    local deorbitBurn is AlterPeriapsis(deorbitAltitude).
+    set deorbitBurn:time to time:seconds + secondsToDeorbit.
+    ExecuteNextNode().
+}
 
+clearScreen.
+print "Reentry Guidance".
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
 lock ReentryAttitude to East * AngleAxis(reentryAttackAngle, ship:north:vector).
 lock steering to ReentryAttitude.
 
-wait until altitude < 20000.
-ag1.
+set knowledge to Lexicon().
+until altitude < 20000 {
+    set knowledge:pilotpitch to round(ship:control:pilotpitch, 2).
+    set knowledge:pilotroll to round(ship:control:pilotroll, 2).
+    set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).
+    set knowledge:pilotthrottle to round(ship:control:pilotmainthrottle, 2).
+    set knowledge:pilotneutral to ship:control:pilotneutral.
+    set knowledge:controlpitch to round(ship:control:pitch, 2).
+    set knowledge:speed to round(ship:velocity:surface:mag).
+    DisplayValues(knowledge).
+    wait 0.
+}
+ag1 off. // AG1 switches engine mode between airbreathing (off) and LOX-fed (on).
 unlock steering.
 unlock throttle.
-print "Over to you to land this plane.".
-print "Activate ABORT to stow vehicle once landed.".
 
 // TODO: Figure out how to tell when we're no longer able to maintain reentry attitude
 // Then transition from this script to MechJeb autopilot
 // Or better yet put the autopilot stuff in here!
 
-local finished is False.
+lock steering to East.
+print "Maintaining level flight at 7000m to the East.".
+print "Activate ABORT to cancel kOS control." at (0,0).
+local finished is false.
+local throttlePID is pidloop(0.5, 0.5, 0.005).
+set throttlePID.setpoint to cruiseSpeed.
+set throttlePID.maxoutput to 1.
+set throttlePID.minoutput to 0.
 on abort {
     set finished to true.
 }
-wait until finished.
+until finished {
+    set knowledge:pilotpitch to round(ship:control:pilotpitch, 2).
+    set knowledge:pilotroll to round(ship:control:pilotroll, 2).
+    set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).
+    set knowledge:pilotthrottle to round(ship:control:pilotmainthrottle, 2).
+    set knowledge:pilotneutral to round(ship:control:pilotneutral ,2).
+    set knowledge:controlpitch to round(ship:control:pitch, 2).
+    DisplayValues(knowledge).
+    set throttleControl to pidloop:update(time:seconds, ship:velocity:surface:mag).
+}
+unlock steering.
+unlock throttle.
+print "Over to you to land this plane.".
+print "Activate ABORT to stow vehicle once landed." at (0,0).
+set finished to false.
+on abort {
+    set finished to true.
+}
+until finished {
+    set knowledge:pilotpitch to round(ship:control:pilotpitch, 2).
+    set knowledge:pilotroll to round(ship:control:pilotroll, 2).
+    set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).
+    set knowledge:pilotthrottle to round(ship:control:pilotmainthrottle, 2).
+    set knowledge:pilotneutral to round(ship:control:pilotneutral ,2).
+    set knowledge:controlpitch to round(ship:control:pitch, 2).
+    DisplayValues(knowledge).
+}
 ShutdownEngines.
 
