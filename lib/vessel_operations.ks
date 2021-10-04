@@ -200,6 +200,11 @@ function NextAlarmIsMine {
 	return soonestKAC:id = soonestShip:id.
 	}
 
+function CancelWarp {
+	set kUniverse:timeWarp:Warp to 0.
+	wait until kUniverse:timeWarp:IsSettled.
+}
+
 // Warping
 function WarpToTime {
 	parameter destinationTime.
@@ -223,8 +228,7 @@ function WarpToTime {
 			break.
 			}
 		}
-	set kUniverse:timeWarp:Warp to 0.
-	wait until kUniverse:timeWarp:IsSettled.
+	CancelWarp().
 	}
 
 function WaitForAlarm {
