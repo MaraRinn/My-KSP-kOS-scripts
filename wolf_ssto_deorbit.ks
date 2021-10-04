@@ -3,11 +3,13 @@ runOncePath("lib/orbital_mechanics").
 runOncePath("lib/vessel_operations").
 clearScreen.
 
-local deorbitAngle is 150.
+local deorbitAngle is 140.
 local deorbitAltitude is 30000.
 local reentryAttackAngle is 30.
 local cruiseSpeed is 170.
 local cruiseAltitude is 7000.
+
+// MechJeb autoland: 4 degrees, 170m/s approach, 100m/s touchdown
 
 local knowledge is Lexicon().
 local KSCLongitude is -74.5. // near enough
@@ -108,6 +110,7 @@ sas off.
 if (ship:orbit:periapsis > 40000) {
     local deorbitBurn is AlterPeriapsis(deorbitAltitude).
     set deorbitBurn:time to time:seconds + secondsToDeorbit.
+    wait 0.
     ExecuteNextNode().
 }
 
@@ -118,6 +121,10 @@ lock ReentryAttitude to East * AngleAxis(reentryAttackAngle, ship:north:vector).
 lock steering to ReentryAttitude.
 
 set knowledge to Lexicon().
+// FIXME: transition from reentry flare to powered flight is complicated
+// Once airspeed is under ~600, reorient to glide towards KSC.
+// Maintain airspeed >300m/s and toggle engines to airbreathing mode
+// Transition to cruise altitude & cruise speed
 until altitude < 20000 {
     set knowledge:pilotpitch to round(ship:control:pilotpitch, 2).
     set knowledge:pilotroll to round(ship:control:pilotroll, 2).
@@ -153,7 +160,7 @@ until finished {
     set knowledge:pilotroll to round(ship:control:pilotroll, 2).
     set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).
     set knowledge:pilotthrottle to round(ship:control:pilotmainthrottle, 2).
-    set knowledge:pilotneutral to round(ship:control:pilotneutral ,2).
+    set knowledge:pilotneutral to ship:control:pilotneutral.
     set knowledge:controlpitch to round(ship:control:pitch, 2).
     DisplayValues(knowledge).
     set throttleControl to pidloop:update(time:seconds, ship:velocity:surface:mag).
@@ -171,7 +178,7 @@ until finished {
     set knowledge:pilotroll to round(ship:control:pilotroll, 2).
     set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).
     set knowledge:pilotthrottle to round(ship:control:pilotmainthrottle, 2).
-    set knowledge:pilotneutral to round(ship:control:pilotneutral ,2).
+    set knowledge:pilotneutral to ship:control:pilotneutral.
     set knowledge:controlpitch to round(ship:control:pitch, 2).
     DisplayValues(knowledge).
 }

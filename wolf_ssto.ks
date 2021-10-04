@@ -4,6 +4,7 @@ runOncePath("lib/orbital_mechanics").
 
 parameter desiredAltitude is 80000.
 
+local Vrot is 140. // m/s at which to lift nose
 local RUNMODE_TAKEOFF is "takeoff".
 local RUNMODE_ATMOSPHERE_TO_ORBIT is "10 degrees to orbit".
 local RUNMODE_RAISE_PERIAPSIS is "raise periapsis".
@@ -36,7 +37,6 @@ for cargomodule in cargomodules {
     }
 }
 
-local Vrot is 150. // m/s at which to lift nose
 local minimumAltitude is ship:body:atm:height.
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
 lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
@@ -115,6 +115,10 @@ function TotalThrust {
 local previousTime is time:seconds.
 local previousSpeed is ship:velocity:orbit:mag.
 function CollateKnowledge {
+    parameter resetLexicon is false.
+    if resetLexicon {
+        set knowledge to Lexicon().
+    }
     set knowledge:thrust to round(TotalThrust(engines)).
     set knowledge:timeToApoapsis to round(eta:apoapsis).
     set knowledge:apoapsis to round(orbit:apoapsis).
@@ -155,12 +159,15 @@ when ship:velocity:surface:mag > Vrot or status="FLYING" then {
 // When airspeed stops increasing, switch to closed engines
 when ship:status = "FLYING" and knowledge:acceleration < 2 then {
     ag1 on.
-    lock FlightPath to ship:prograde:vector.
-    set knowledge:runmode to RUNMODE_RAISE_PERIAPSIS.
 }
 
 when ship:status = "FLYING" and ship:velocity:surface:mag > Vrot then {
     gear off.
+}
+
+when ship:status = "SUB_ORBITAL" then {
+    lock FlightPath to ship:prograde:vector.
+    set knowledge:runmode to RUNMODE_RAISE_PERIAPSIS.
 }
 
 // Push apoapsis to desired altitude
@@ -190,11 +197,13 @@ until orbit:periapsis > minimumAltitude {
 set knowledge:runmode to RUNMODE_COMPLETE.
 unlock steering.
 unlock throttle.
-CollateKnowledge().
+CollateKnowledge(true).
 DisplayValues(knowledge).
 set ship:control:neutralize to true.
 create_circularise_node().
 ExecuteNextNode().
+CollateKnowledge().
+DisplayValues(knowledge).
 OpenCargoBay().
 sas on.
 
