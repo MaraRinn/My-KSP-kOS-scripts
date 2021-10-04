@@ -1,4 +1,4 @@
-run "orbital_mechanics".
+run "lib/orbital_mechanics".
 runoncepath("lib/utility.ks").
 
 set eccentricity to Ike:orbit:eccentricity.

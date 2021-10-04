@@ -1,4 +1,4 @@
-run "orbital_mechanics".
+run "lib/orbital_mechanics".
 
 set STEERINGMANAGER:MAXSTOPPINGTIME to 3.
 

@@ -1,4 +1,4 @@
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 runoncepath("lib/vessel_operations.ks").
 
 parameter ExpectedRelayCount is 0.

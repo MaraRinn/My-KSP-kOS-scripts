@@ -1,4 +1,4 @@
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 set throttleSetting to 0.
 lock throttle to throttleSetting.
 lock SunwardVector to sun:position.

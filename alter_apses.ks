@@ -3,7 +3,7 @@ parameter newApoapsis is newPeriapsis.
 parameter newLAN is orbit:LAN.
 parameter newAop is orbit:argumentofperiapsis.
 
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 
 local alterApsesNodeTime is time:seconds.
 local newOrbit is orbit.

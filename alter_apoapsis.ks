@@ -1,5 +1,5 @@
 parameter newApoapsis.
 
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 
 AlterApoapsis(newApoapsis, orbit, time:seconds).

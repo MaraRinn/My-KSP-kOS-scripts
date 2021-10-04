@@ -1,6 +1,6 @@
 runOncePath("lib/vessel_operations").
 runOncePath("lib/utility").
-runOncePath("orbital_mechanics").
+runOncePath("lib/orbital_mechanics").
 
 parameter desiredAltitude is 80000.
 

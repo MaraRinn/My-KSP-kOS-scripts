@@ -1,5 +1,5 @@
 parameter newPeriapsis.
 
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 
 AlterPeriapsis(newPeriapsis, orbit, time:seconds).

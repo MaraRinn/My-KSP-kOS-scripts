@@ -1,4 +1,4 @@
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 runoncepath("lib/vessel_operations").
 set Ship:Control:PilotMainThrottle to 0.
 set throttleSetting to 0.

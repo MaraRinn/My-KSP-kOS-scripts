@@ -1,7 +1,7 @@
 // Keep an equatorial relay in sync with Ike
 
 print "Performing station keeping".
-runoncepath("orbital_mechanics").
+runoncepath("lib/orbital_mechanics").
 
 function PrepareNode {
 	declare parameter newR.
