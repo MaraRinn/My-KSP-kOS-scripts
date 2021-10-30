@@ -81,6 +81,7 @@ function CloseCargoBay{
 until not hasnode {
     if hasnode { remove nextnode. }
 }
+unset target.
 
 local deorbitReady is false.
 local secondsToDeorbit is 0.
@@ -110,6 +111,7 @@ sas off.
 if (ship:orbit:periapsis > 40000) {
     local deorbitBurn is AlterPeriapsis(deorbitAltitude).
     set deorbitBurn:time to time:seconds + secondsToDeorbit.
+    kUniverse:QuickSaveTo(ship:name + " Deorbit Burn").
     wait 0.
     ExecuteNextNode().
 }
@@ -119,13 +121,14 @@ print "Reentry Guidance".
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
 lock ReentryAttitude to East * AngleAxis(reentryAttackAngle, ship:north:vector).
 lock steering to ReentryAttitude.
+set navMode to "SURFACE".
 
 set knowledge to Lexicon().
-// FIXME: transition from reentry flare to powered flight is complicated
+// FIXME: transition from reentry pitch to powered flight is complicated
 // Once airspeed is under ~600, reorient to glide towards KSC.
 // Maintain airspeed >300m/s and toggle engines to airbreathing mode
 // Transition to cruise altitude & cruise speed
-until altitude < 20000 {
+until (altitude < 20000) or (ship:velocity:surface:mag < 800) {
     set knowledge:pilotpitch to round(ship:control:pilotpitch, 2).
     set knowledge:pilotroll to round(ship:control:pilotroll, 2).
     set knowledge:pilotpitchtrim to round(ship:control:pilotpitchtrim, 2).

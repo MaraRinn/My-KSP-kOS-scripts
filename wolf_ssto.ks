@@ -37,6 +37,25 @@ for cargomodule in cargomodules {
     }
 }
 
+local transportComputer is ship:partsDubbedPattern("Transport Computer")[0].
+local transportModule is transportComputer:getModule("WOLF_TransporterModule").
+local passengerModule is transportComputer:getModule("WOLF_CrewTransporterModule").
+local routeModules is List(transportModule, passengerModule).
+function ModulesDoEvent {
+    parameter eventName.
+    for module in routeModules {
+        if module:hasEvent(eventName) {
+            module:doEvent(eventName).
+        }
+    }
+}
+function StartRoute {
+    ModulesDoEvent("connect to origin depot").
+}
+function EndRoute {
+    ModulesDoEvent("connect to destination depot").
+}
+
 local minimumAltitude is ship:body:atm:height.
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
 lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
@@ -95,14 +114,6 @@ function CloseCargoBay{
     }
 }
 
-function maxAccelerationFunc {
-    if ship:maxthrust > 0 {
-        return ship:mass / ship:maxthrust.
-    }
-    return 0.
-}
-lock maxAcceleration to maxAccelerationFunc().
-
 function TotalThrust {
     parameter ourEngines.
     local accumulator is 0.
@@ -112,8 +123,14 @@ function TotalThrust {
     return accumulator.
 }
 
+function maxAccelerationFunc {
+    return TotalThrust(engines) / ship:mass.
+}
+lock maxAcceleration to maxAccelerationFunc().
+
 local previousTime is time:seconds.
 local previousSpeed is ship:velocity:orbit:mag.
+local surfaceAcceleration is 0.
 function CollateKnowledge {
     parameter resetLexicon is false.
     if resetLexicon {
@@ -131,7 +148,10 @@ function CollateKnowledge {
     set knowledge:throttleIntent to round(throttleIntent,2).
     set currentSpeed to ship:velocity:orbit:mag.
     set currentTime to time:seconds.
-    set knowledge:acceleration to round((currentSpeed - previousSpeed)/(currentTime - previousTime), 1).
+    set surfaceAcceleration to (currentSpeed - previousSpeed)/(currentTime - previousTime).
+    set knowledge:acceleration to round(surfaceAcceleration, 2).
+    set knowledge:maxacceleration to round(maxAcceleration, 2).
+    set knowledge:dragComponent to round(maxacceleration - surfaceAcceleration, 2).
     set previousSpeed to currentSpeed.
     set previousTime to currentTime.
 }
@@ -143,6 +163,8 @@ CloseCargoBay().
 set Ship:Control:PilotMainThrottle to 0.
 lock steering to st.
 lock throttle to throttleIntent.
+StartRoute().
+clearscreen.
 if ship:status = "PRELAUNCH" or maxThrust = 0 {
     stage.
 }
@@ -157,7 +179,7 @@ when ship:velocity:surface:mag > Vrot or status="FLYING" then {
 }
 
 // When airspeed stops increasing, switch to closed engines
-when ship:status = "FLYING" and knowledge:acceleration < 2 then {
+when ship:status = "FLYING" and ship:velocity:surface:mag > 1000 and surfaceAcceleration < 2 then {
     ag1 on.
 }
 
