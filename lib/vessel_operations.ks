@@ -287,8 +287,8 @@ function WaitForNode {
 
 	until burnETA <= 800 {
 		set warpEndTime to time:seconds + min(soonest:remaining, burnETA).
-		print "Next manoeuvre in " + TimeString(burnETA).
-		print "Next alarm in " + TimeString(soonest:remaining).
+		print "Next manoeuvre in " + TimeToString(burnETA).
+		print "Next alarm in " + TimeToString(soonest:remaining).
 		lock steering to LookDirUp(NextNode:burnvector, SunwardVector).
 		WarpToTime(warpEndTime).
 		if NextAlarmIsMine() and (soonest:type <> "Maneuver") and (soonest:type <> "ManeuverAuto") {
@@ -355,6 +355,8 @@ function ExecuteNextNode {
 	set desiredThrottle to 0.
 	lock throttle to desiredThrottle.
 	wait until burnIsAligned.
+	local throttleIntent is 0.
+	local throttleSetting is 0.
 	until done {
 		if burnvector():mag < 0.1 or sas and (sasMode="PROGRADE" or sasMode="RETROGRADE") {
 			set done to true.

@@ -13,8 +13,9 @@ parameter periapsisLeadTime is 120.
 // The relay satellites will adjust their orbit to the appropriate period (this may result in wonky orbits)
 // The survey satellite will attempt to insert itself into the suitable survey orbit for the body it's orbiting.
 
-runoncepath("orbital_mechanics.ks").
+runoncepath("lib/orbital_mechanics.ks").
 runoncepath("lib/vessel_operations.ks").
+runoncepath("lib/utility.ks").
 
 set AtmosphereAltitude to BODY:ATM:HEIGHT.
 set MinimumPeriapsis to max(AtmosphereAltitude, TerrainHeight()) + 100.

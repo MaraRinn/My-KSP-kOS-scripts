@@ -4,6 +4,6 @@ Herein you will find a bunch of scripts that I use in KSP's KOS addon, (poorly) 
 
 More documentation will appear as I become more comfortable with KOS and rocket surgery.
 
-# References
+## References
 
- + [kOS: Kerbal Operating System](https://ksp-kos.github.io/KOS/)
++ [kOS: Kerbal Operating System](https://ksp-kos.github.io/KOS/)

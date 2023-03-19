@@ -1,5 +1,5 @@
-function TimeString {
-	declare parameter secondsToDisplay.
+function TimeToString {
+	parameter secondsToDisplay.
 	set secondsPerMinute to 60.
 	set secondsPerHour to secondsPerMinute * 60.
 	set secondsPerDay to secondsPerHour * 6.   // Kerbin days

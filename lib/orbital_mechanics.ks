@@ -501,14 +501,14 @@ function InverseQuaternion {
 	}
 
 function RotateVector {
-	parameter V.
-	parameter angle.
+	parameter originalVector.
+	parameter rotAngle.
 	parameter axis.
 
-	local P to VectorToQuaternion(V).
-	local R to RotationQuaternion(angle, axis).
+	local P to VectorToQuaternion(originalVector).
+	local RQ to RotationQuaternion(rotAngle, axis).
 	local Ri to InverseQuaternion(R).
-	local T to H(R, P).
+	local T to H(RQ, P).
 	local U to H(T, Ri).
 	local Vrotated to QuaternionToVector(U).
 	return Vrotated.
