@@ -4,7 +4,9 @@ runOncePath("lib/orbital_mechanics").
 
 parameter desiredAltitude is 80000.
 
-local Vrot is 120. // m/s at which to lift nose
+local Vrot is 120.   // m/s at which to lift nose
+local Arot is 6.     // degrees to rotate during take-off
+local Aflight is 10. // inclination to maintain during ascent to orbit
 local RUNMODE_RUNWAY is "accelerating".
 local RUNMODE_ROTATE is "rotating".
 local RUNMODE_ATMOSPHERE_TO_ORBIT is "10 degrees to orbit".
@@ -65,8 +67,8 @@ function EndRoute {
 
 local minimumAltitude is ship:body:atm:height.
 lock East to vectorCrossProduct(ship:up:vector, ship:north:vector).
-lock EastFlightPath to East * AngleAxis(10, ship:north:vector).
-lock EastRotatePath to East * AngleAxis(7, ship:north:vector). // avoid tailstrike
+lock EastFlightPath to East * AngleAxis(Aflight, ship:north:vector).
+lock EastRotatePath to East * AngleAxis(Arot, ship:north:vector). // avoid tailstrike
 lock FlightPath to East. // KSC Runway 90
 lock mySteeringIntent to East.
 local throttleIntent is 1.
@@ -194,7 +196,7 @@ when ship:velocity:surface:mag > Vrot then {
     set knowledge:runmode to RUNMODE_ROTATE.
     lock mySteeringIntent to lookdirup(EastRotatePath, ship:up:vector).
 }
-when ship:velocity:surface:mag > Vrot and status="FLYING" and ship:altitude > 100 then {
+when ship:velocity:surface:mag > Vrot and status="FLYING" and ship:altitude > 80 then {
     set knowledge:runmode to RUNMODE_ATMOSPHERE_TO_ORBIT.
     lock mySteeringIntent to lookdirup(EastFlightPath, ship:up:vector).
 }
